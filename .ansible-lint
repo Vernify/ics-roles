@@ -1,0 +1,43 @@
+# .ansible-lint configuration file
+---
+# List of additional kind:pattern to be added at the top of the default
+# match list, first match determines the file kind.
+kinds:
+  # {'.yml', '.yaml'} files that contain --- somewhere in their content
+  # are considered Ansible playbooks. You can also use 'yaml' to match
+  # any .yaml or .yml file.
+  - playbook: "examples/*.yml"
+  - playbook: "examples/*.yaml"
+  - tasks: "**/tasks/*.yml"
+  - tasks: "**/tasks/*.yaml"
+  - handlers: "**/handlers/*.yml"
+  - handlers: "**/handlers/*.yaml"
+  - vars: "**/vars/*.yml"
+  - vars: "**/vars/*.yaml"
+  - defaults: "**/defaults/*.yml"
+  - defaults: "**/defaults/*.yaml"
+  - meta: "**/meta/*.yml"
+  - meta: "**/meta/*.yaml"
+
+# Enable checking of loop variable prefixes in roles
+loop_var_prefix: "{role}_"
+
+# Enforce variable naming patterns
+var_naming_pattern: "^[a-z_][a-z0-9_]*$"
+
+# Skip list for rules
+skip_list:
+  - yaml[line-length]  # Allow longer lines for readability
+  - name[casing]       # Allow different casing in names
+
+# Exclude certain paths
+exclude_paths:
+  - .cache/
+  - .github/
+  - tests/output/
+  - .pytest_cache/
+  - .tox/
+
+# Enable checking of Ansible syntax
+use_default_rules: true
+verbosity: 1

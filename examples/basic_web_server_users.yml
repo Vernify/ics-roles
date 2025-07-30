@@ -1,0 +1,61 @@
+---
+# Example playbook: Basic user management for web servers
+# This demonstrates how to use the user_management role in a customer-specific repository
+
+- name: Manage users for Customer A web servers
+  hosts: customer_a_web_servers
+  become: true
+  roles:
+    - ics.common.user_management
+  
+  vars:
+    # Define groups with specific sudo rules
+    user_management_groups:
+      - name: "customer_a_web_admins"
+        gid: 3001
+        sudo_rules:
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl status nginx"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart customer-app"
+          - "ALL=(ALL) NOPASSWD: /opt/customer-app/scripts/deploy.sh"
+        state: present
+      
+      - name: "customer_a_developers"
+        gid: 3002
+        sudo_rules:
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl status nginx"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl status customer-app"
+          - "ALL=(ALL) NOPASSWD: /bin/cat /var/log/nginx/*.log"
+          - "ALL=(ALL) NOPASSWD: /bin/cat /var/log/customer-app/*.log"
+        state: present
+    
+    # Define users and assign them to groups
+    user_management_users:
+      - name: "alice"
+        uid: 2001
+        group: "customer_a_web_admins"
+        groups: ["docker"]  # Additional groups
+        shell: "/bin/bash"
+        ssh_keys:
+          - "{{ vault_alice_ssh_key }}"
+        comment: "Alice - Customer A Web Admin"
+        state: present
+      
+      - name: "bob"
+        uid: 2002
+        group: "customer_a_web_admins"
+        shell: "/bin/bash"
+        ssh_keys:
+          - "{{ vault_bob_ssh_key }}"
+        comment: "Bob - Customer A Web Admin"
+        state: present
+      
+      - name: "charlie"
+        uid: 2003
+        group: "customer_a_developers"
+        shell: "/bin/bash"
+        ssh_keys:
+          - "{{ vault_charlie_ssh_key }}"
+        comment: "Charlie - Customer A Developer"
+        state: present

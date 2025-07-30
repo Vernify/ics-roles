@@ -1,0 +1,50 @@
+---
+# SSH key management tasks
+
+- name: Set up SSH keys for users
+  ansible.posix.authorized_key:
+    user: "{{ user_management_item.0.name }}"
+    key: "{{ user_management_item.1 }}"
+    state: present
+    manage_dir: true
+    path: "{{ user_management_item.0.home | default('/home/' + user_management_item.0.name) }}/.ssh/authorized_keys"
+    key_options: "{{ user_management_item.0.ssh_key_options | default(omit) }}"
+  become: true
+  loop: "{{ user_management_users | subelements('ssh_keys', skip_missing=true) }}"
+  loop_control:
+    loop_var: user_management_item
+    label: "{{ user_management_item.0.name }} - SSH key"
+  when:
+    - user_management_users | length > 0
+    - user_management_item.0.state | default('present') == 'present'
+
+- name: Set proper permissions on authorized_keys files
+  ansible.builtin.file:
+    path: "{{ user_management_user.home | default('/home/' + user_management_user.name) }}/.ssh/authorized_keys"
+    mode: "{{ user_management_ssh_key_mode }}"
+    owner: "{{ user_management_user.name }}"
+    group: "{{ user_management_user.group | default(user_management_user.name) }}"
+  become: true
+  loop: "{{ user_management_users }}"
+  loop_control:
+    loop_var: user_management_user
+    label: "{{ user_management_user.name }}"
+  when:
+    - user_management_users | length > 0
+    - user_management_user.state | default('present') == 'present'
+    - user_management_user.ssh_keys is defined
+    - user_management_user.ssh_keys | length > 0
+
+- name: Remove SSH keys for absent users
+  ansible.builtin.file:
+    path: "{{ user_management_user.home | default('/home/' + user_management_user.name) }}/.ssh"
+    state: absent
+  become: true
+  loop: "{{ user_management_users }}"
+  loop_control:
+    loop_var: user_management_user
+    label: "{{ user_management_user.name }}"
+  when:
+    - user_management_users | length > 0
+    - user_management_user.state is defined
+    - user_management_user.state == 'absent'

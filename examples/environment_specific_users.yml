@@ -1,0 +1,122 @@
+---
+# Example playbook: Environment-specific user management
+# This shows how to configure different access levels per environment
+
+- name: Manage users based on environment
+  hosts: all
+  become: true
+  roles:
+    - ics.common.user_management
+  
+  vars:
+    # Environment-specific group configurations
+    user_management_groups: >-
+      {{
+        {
+          'production': [
+            {
+              'name': 'prod_admins',
+              'gid': 4001,
+              'sudo_rules': [
+                'ALL=(ALL) PASSWD: ALL'  # Require password in production
+              ],
+              'state': 'present'
+            },
+            {
+              'name': 'prod_deployers',
+              'gid': 4002,
+              'sudo_rules': [
+                'ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart myapp',
+                'ALL=(ALL) NOPASSWD: /opt/deploy/scripts/deploy.sh',
+                'ALL=(ALL) NOPASSWD: /usr/bin/systemctl status myapp'
+              ],
+              'state': 'present'
+            }
+          ],
+          'staging': [
+            {
+              'name': 'staging_users',
+              'gid': 4010,
+              'sudo_rules': [
+                'ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart myapp',
+                'ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop myapp',
+                'ALL=(ALL) NOPASSWD: /usr/bin/systemctl start myapp',
+                'ALL=(ALL) NOPASSWD: /opt/deploy/scripts/deploy.sh',
+                'ALL=(ALL) NOPASSWD: /bin/cat /var/log/myapp/*.log'
+              ],
+              'state': 'present'
+            }
+          ],
+          'development': [
+            {
+              'name': 'dev_users',
+              'gid': 4020,
+              'sudo_rules': [
+                'ALL=(ALL) NOPASSWD: ALL'  # Full access in development
+              ],
+              'state': 'present'
+            }
+          ]
+        }[environment_type | default('development')]
+      }}
+    
+    # Environment-specific user configurations
+    user_management_users: >-
+      {{
+        {
+          'production': [
+            {
+              'name': 'prodadmin1',
+              'uid': 3001,
+              'group': 'prod_admins',
+              'ssh_keys': [vault_prodadmin1_ssh_key],
+              'comment': 'Production Administrator',
+              'state': 'present'
+            },
+            {
+              'name': 'deployer1',
+              'uid': 3002,
+              'group': 'prod_deployers',
+              'ssh_keys': [vault_deployer1_ssh_key],
+              'comment': 'Production Deployment User',
+              'state': 'present'
+            }
+          ],
+          'staging': [
+            {
+              'name': 'staginguser1',
+              'uid': 3010,
+              'group': 'staging_users',
+              'ssh_keys': [vault_staginguser1_ssh_key],
+              'comment': 'Staging Environment User',
+              'state': 'present'
+            },
+            {
+              'name': 'staginguser2',
+              'uid': 3011,
+              'group': 'staging_users',
+              'ssh_keys': [vault_staginguser2_ssh_key],
+              'comment': 'Staging Environment User 2',
+              'state': 'present'
+            }
+          ],
+          'development': [
+            {
+              'name': 'devuser1',
+              'uid': 3020,
+              'group': 'dev_users',
+              'ssh_keys': [vault_devuser1_ssh_key],
+              'comment': 'Development User 1',
+              'state': 'present'
+            },
+            {
+              'name': 'devuser2',
+              'uid': 3021,
+              'group': 'dev_users',
+              'ssh_keys': [vault_devuser2_ssh_key],
+              'comment': 'Development User 2',
+              'state': 'present'
+            }
+          ]
+        }[environment_type | default('development')]
+      }}

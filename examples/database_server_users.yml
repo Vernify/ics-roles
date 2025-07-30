@@ -1,0 +1,95 @@
+---
+# Example playbook: Database server user management
+# This shows advanced configuration with multiple privilege levels
+
+- name: Manage users for database servers
+  hosts: database_servers
+  become: true
+  roles:
+    - ics.common.user_management
+  
+  vars:
+    # Define groups with different privilege levels
+    user_management_groups:
+      - name: "db_administrators"
+        gid: 3010
+        sudo_rules:
+          - "ALL=(ALL) NOPASSWD: ALL"  # Full admin access
+        state: present
+      
+      - name: "db_operators"
+        gid: 3011
+        sudo_rules:
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart mysql"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop mysql"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl start mysql"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl status mysql"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/mysql"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/mysqldump"
+          - "ALL=(ALL) NOPASSWD: /opt/db-scripts/backup.sh"
+          - "ALL=(ALL) NOPASSWD: /opt/db-scripts/restore.sh"
+        state: present
+      
+      - name: "db_monitors"
+        gid: 3012
+        sudo_rules:
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl status mysql"
+          - "ALL=(ALL) NOPASSWD: /bin/cat /var/log/mysql/*.log"
+          - "ALL=(ALL) NOPASSWD: /bin/tail -f /var/log/mysql/*.log"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/mysql -e 'SHOW PROCESSLIST'"
+        state: present
+      
+      - name: "db_backup_users"
+        gid: 3013
+        sudo_rules:
+          - "ALL=(ALL) NOPASSWD: /opt/db-scripts/backup.sh"
+          - "ALL=(ALL) NOPASSWD: /bin/cat /var/log/backup/*.log"
+        state: present
+    
+    # Define users with different roles
+    user_management_users:
+      - name: "dbadmin1"
+        uid: 2010
+        group: "db_administrators"
+        groups: ["wheel"]
+        shell: "/bin/bash"
+        ssh_keys:
+          - "{{ vault_dbadmin1_ssh_key }}"
+        comment: "Primary Database Administrator"
+        state: present
+      
+      - name: "dbops1"
+        uid: 2011
+        group: "db_operators"
+        shell: "/bin/bash"
+        ssh_keys:
+          - "{{ vault_dbops1_ssh_key }}"
+        comment: "Database Operator - Day Shift"
+        state: present
+      
+      - name: "dbops2"
+        uid: 2012
+        group: "db_operators"
+        shell: "/bin/bash"
+        ssh_keys:
+          - "{{ vault_dbops2_ssh_key }}"
+        comment: "Database Operator - Night Shift"
+        state: present
+      
+      - name: "monitoring_user"
+        uid: 2013
+        group: "db_monitors"
+        shell: "/bin/bash"
+        ssh_keys:
+          - "{{ vault_monitoring_ssh_key }}"
+        comment: "Database Monitoring Service Account"
+        state: present
+      
+      - name: "backup_service"
+        uid: 2014
+        group: "db_backup_users"
+        shell: "/bin/bash"
+        ssh_keys:
+          - "{{ vault_backup_service_ssh_key }}"
+        comment: "Database Backup Service Account"
+        state: present

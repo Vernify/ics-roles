@@ -1,0 +1,47 @@
+---
+# Main tasks file for user_management role
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - user_management_groups is defined
+      - user_management_users is defined
+    fail_msg: "user_management_groups and user_management_users must be defined"
+  tags:
+    - user_management_groups
+    - user_management_users
+
+- name: Create sudoers directory
+  ansible.builtin.file:
+    path: "{{ user_management_sudoers_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  become: true
+  tags:
+    - user_management_groups
+    - user_management_sudoers
+
+- name: Manage groups and sudo rules
+  ansible.builtin.import_tasks: groups.yml
+  tags:
+    - user_management_groups
+    - user_management_sudoers
+
+- name: Manage users
+  ansible.builtin.import_tasks: users.yml
+  tags:
+    - user_management_users
+
+- name: Manage SSH keys
+  ansible.builtin.import_tasks: ssh_keys.yml
+  tags:
+    - user_management_users
+    - user_management_ssh_keys
+
+- name: Cleanup removed users (if enabled)
+  ansible.builtin.import_tasks: cleanup.yml
+  when: user_management_remove_unknown_users | bool
+  tags:
+    - user_management_cleanup

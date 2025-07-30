@@ -1,0 +1,62 @@
+---
+# Group management and sudo rules configuration
+
+- name: Create custom groups
+  ansible.builtin.group:
+    name: "{{ user_management_group.name }}"
+    gid: "{{ user_management_group.gid | default(omit) }}"
+    system: "{{ user_management_group.system | default(user_management_system_groups) }}"
+    state: "{{ user_management_group.state | default('present') }}"
+  become: true
+  loop: "{{ user_management_groups }}"
+  loop_control:
+    loop_var: user_management_group
+    label: "{{ user_management_group.name }}"
+  when: user_management_groups | length > 0
+
+- name: Create sudoers files for groups
+  ansible.builtin.template:
+    src: sudoers_group.j2
+    dest: "{{ user_management_sudoers_dir }}/{{ user_management_group.name }}"
+    mode: "{{ user_management_sudoers_file_mode }}"
+    owner: root
+    group: root
+    validate: "{{ user_management_sudoers_validate_command }}"
+    backup: true
+  become: true
+  loop: "{{ user_management_groups }}"
+  loop_control:
+    loop_var: user_management_group
+    label: "{{ user_management_group.name }}"
+  when:
+    - user_management_groups | length > 0
+    - user_management_group.sudo_rules is defined
+    - user_management_group.sudo_rules | length > 0
+    - user_management_group.state | default('present') == 'present'
+
+- name: Remove sudoers files for absent groups
+  ansible.builtin.file:
+    path: "{{ user_management_sudoers_dir }}/{{ user_management_group.name }}"
+    state: absent
+  become: true
+  loop: "{{ user_management_groups }}"
+  loop_control:
+    loop_var: user_management_group
+    label: "{{ user_management_group.name }}"
+  when:
+    - user_management_groups | length > 0
+    - user_management_group.state is defined
+    - user_management_group.state == 'absent'
+
+- name: Validate sudoers configuration
+  ansible.builtin.command:
+    cmd: "visudo -c"
+  become: true
+  changed_when: false
+  failed_when: false
+  register: user_management_sudoers_check
+
+- name: Report sudoers validation results
+  ansible.builtin.debug:
+    msg: "Sudoers configuration validation: {{ 'PASSED' if user_management_sudoers_check.rc == 0 else 'FAILED' }}"
+  when: user_management_sudoers_check is defined

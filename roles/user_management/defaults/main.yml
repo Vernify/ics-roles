@@ -1,0 +1,72 @@
+---
+# Default variables for user_management role
+# All variables are prefixed with 'user_management_' to comply with ansible-lint
+
+# Groups configuration with sudo rules
+user_management_groups: []
+# Example:
+# user_management_groups:
+#   - name: "admin_group"
+#     gid: 3001
+#     sudo_rules:
+#       - "ALL=(ALL) NOPASSWD: ALL"
+#     state: present
+#   - name: "deploy_group"
+#     gid: 3002
+#     sudo_rules:
+#       - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx"
+#       - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx"
+#     state: present
+
+# Users configuration
+user_management_users: []
+# Example:
+# user_management_users:
+#   - name: "admin1"
+#     uid: 2001
+#     group: "admin_group"
+#     groups: ["wheel", "docker"]  # Additional groups (optional)
+#     shell: "/bin/bash"
+#     create_home: true
+#     ssh_keys:
+#       - "ssh-rsa AAAAB3NzaC1yc2EAAA... admin1@company.com"
+#     password: "{{ vault_admin1_password }}"  # Optional
+#     comment: "Admin User 1"
+#     state: present
+
+# Default settings
+user_management_default_shell: "/bin/bash"
+user_management_create_home_dirs: true
+user_management_remove_unknown_users: false
+user_management_sudoers_dir: "/etc/sudoers.d"
+
+# SSH configuration
+user_management_ssh_key_bits: 4096
+user_management_ssh_key_comment: "{{ ansible_managed }}"
+
+# Sudoers file permissions
+user_management_sudoers_file_mode: "0440"
+user_management_sudoers_validate_command: "visudo -cf %s"
+
+# User home directory permissions
+user_management_home_dir_mode: "0755"
+user_management_ssh_dir_mode: "0700"
+user_management_ssh_key_mode: "0600"
+
+# Group management
+user_management_create_user_groups: true
+user_management_system_groups: false
+
+# Password settings
+user_management_password_lock_inactive_users: true
+user_management_password_max_age: 90
+user_management_password_min_age: 1
+user_management_password_warn_age: 7
+
+# Account expiration
+user_management_account_expiration_enabled: false
+user_management_account_expiration_days: 365
+
+# Cleanup settings
+user_management_remove_user_home: false
+user_management_backup_removed_users: true

@@ -1,0 +1,134 @@
+# Ansible Collection .gitignore
+
+# Ansible temporary files
+*.retry
+.ansible/
+ansible.log
+
+# Vault password files
+.vault_password
+.vault_pass
+vault_pass.txt
+vault_password.txt
+**/vault_pass*
+**/vault_password*
+
+# Encrypted vault files (be careful - you may want to commit these)
+# Uncomment the following lines if you want to ignore all vault files
+# **/vault.yml
+# **/vault.yaml
+# group_vars/**/vault*
+# host_vars/**/vault*
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa*
+id_ed25519*
+id_ecdsa*
+
+# Dynamic inventory scripts output
+inventory.json
+inventory.yml
+
+# Build artifacts
+build/
+dist/
+*.tar.gz
+*.zip
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Test and coverage files
+.tox/
+.coverage
+.pytest_cache/
+htmlcov/
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.out
+
+# Galaxy build files
+*.tar.gz
+releases/
+
+# Local development files
+local/
+scratch/
+notes.txt
+TODO.md
+
+# Terraform files (if using alongside Ansible)
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+
+# Docker files
+.dockerignore
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Jenkins and CI/CD artifacts
+.jenkins/
+pipeline.log
+
+# HashiCorp Vault files
+.vault-token
+
+# Environment-specific overrides
+inventories/*/local/
+inventories/*/override/
+
+# Molecule test files (if using molecule for testing)
+.molecule/
+.cache/
+
+# Ansible Galaxy dependencies
+collections/
+roles/external/
+
+# Local ansible configuration overrides
+ansible.cfg.local

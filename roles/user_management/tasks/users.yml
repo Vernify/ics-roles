@@ -1,0 +1,77 @@
+---
+# User management tasks
+
+- name: Create users
+  ansible.builtin.user:
+    name: "{{ user_management_user.name }}"
+    uid: "{{ user_management_user.uid | default(omit) }}"
+    group: "{{ user_management_user.group | default(user_management_user.name if user_management_create_user_groups else omit) }}"
+    groups: "{{ user_management_user.groups | default([]) | join(',') }}"
+    shell: "{{ user_management_user.shell | default(user_management_default_shell) }}"
+    home: "{{ user_management_user.home | default('/home/' + user_management_user.name) }}"
+    create_home: "{{ user_management_user.create_home | default(user_management_create_home_dirs) }}"
+    password: "{{ user_management_user.password | default(omit) }}"
+    comment: "{{ user_management_user.comment | default(omit) }}"
+    system: "{{ user_management_user.system | default(false) }}"
+    expires: >-
+      {{
+        (ansible_date_time.epoch | int + (user_management_account_expiration_days * 86400))
+        if (user_management_account_expiration_enabled and user_management_user.expires is not defined)
+        else (user_management_user.expires | default(omit))
+      }}
+    state: "{{ user_management_user.state | default('present') }}"
+  become: true
+  loop: "{{ user_management_users }}"
+  loop_control:
+    loop_var: user_management_user
+    label: "{{ user_management_user.name }}"
+  when: user_management_users | length > 0
+
+- name: Set proper permissions on user home directories
+  ansible.builtin.file:
+    path: "{{ user_management_user.home | default('/home/' + user_management_user.name) }}"
+    mode: "{{ user_management_user.home_mode | default(user_management_home_dir_mode) }}"
+    owner: "{{ user_management_user.name }}"
+    group: "{{ user_management_user.group | default(user_management_user.name) }}"
+  become: true
+  loop: "{{ user_management_users }}"
+  loop_control:
+    loop_var: user_management_user
+    label: "{{ user_management_user.name }}"
+  when:
+    - user_management_users | length > 0
+    - user_management_user.state | default('present') == 'present'
+    - user_management_user.create_home | default(user_management_create_home_dirs)
+
+- name: Create SSH directories
+  ansible.builtin.file:
+    path: "{{ user_management_user.home | default('/home/' + user_management_user.name) }}/.ssh"
+    state: directory
+    mode: "{{ user_management_ssh_dir_mode }}"
+    owner: "{{ user_management_user.name }}"
+    group: "{{ user_management_user.group | default(user_management_user.name) }}"
+  become: true
+  loop: "{{ user_management_users }}"
+  loop_control:
+    loop_var: user_management_user
+    label: "{{ user_management_user.name }}"
+  when:
+    - user_management_users | length > 0
+    - user_management_user.state | default('present') == 'present'
+    - user_management_user.ssh_keys is defined
+    - user_management_user.ssh_keys | length > 0
+
+- name: Lock inactive users (if enabled)
+  ansible.builtin.user:
+    name: "{{ user_management_user.name }}"
+    password_lock: true
+  become: true
+  loop: "{{ user_management_users }}"
+  loop_control:
+    loop_var: user_management_user
+    label: "{{ user_management_user.name }}"
+  when:
+    - user_management_password_lock_inactive_users | bool
+    - user_management_users | length > 0
+    - user_management_user.state | default('present') == 'present'
+    - user_management_user.password is not defined
