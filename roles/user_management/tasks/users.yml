@@ -42,6 +42,7 @@
     - user_management_users | length > 0
     - user_management_user.state | default('present') == 'present'
     - user_management_user.create_home | default(user_management_create_home_dirs)
+    - not ansible_check_mode  # Skip in check mode since home directories won't exist
 
 - name: Create SSH directories
   ansible.builtin.file:
@@ -60,6 +61,7 @@
     - user_management_user.state | default('present') == 'present'
     - user_management_user.ssh_keys is defined
     - user_management_user.ssh_keys | length > 0
+    - not ansible_check_mode  # Skip in check mode since home directories won't exist
 
 - name: Lock inactive users (if enabled)
   ansible.builtin.user:

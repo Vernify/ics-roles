@@ -34,6 +34,7 @@
     - user_management_user.state | default('present') == 'present'
     - user_management_user.ssh_keys is defined
     - user_management_user.ssh_keys | length > 0
+    - not ansible_check_mode  # Skip in check mode since files won't exist
 
 - name: Remove SSH keys for absent users
   ansible.builtin.file:

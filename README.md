@@ -478,3 +478,21 @@ For issues and questions:
 ## License
 
 This collection is licensed under the MIT License. See LICENSE file for details.
+
+
+## Versions
+This first release is tagged as follow:
+
+```
+git tag -a v1.0.0 -m "Initial release of ICS Ansible Collection
+
+Features:
+- User management role with comprehensive user/group operations
+- Sudo rules management with granular permissions
+- SSH key assignment and management
+- Cross-platform support (CentOS, Ubuntu, Rocky Linux, Oracle Linux, Fedora)
+- Comprehensive documentation and examples
+- Best practices implementation following Ansible Galaxy standards"
+```
+
+Followed by `git push origin v1.0.0`
