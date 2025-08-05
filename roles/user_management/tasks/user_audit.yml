@@ -19,22 +19,30 @@
 
 - name: Build list of exempt users from groups
   ansible.builtin.set_fact:
+    user_management_exempt_users: []
+  when: 
+    - user_management_audit_exempt_groups | length > 0
+    - user_management_exempt_group_members_raw is defined
+
+- name: Parse exempt users from successful group lookups
+  ansible.builtin.set_fact:
     user_management_exempt_users: >-
       {{
-        (user_management_exempt_group_members_raw.results | default([]))
-        | selectattr('rc', 'equalto', 0)
-        | selectattr('stdout', 'defined')
-        | selectattr('stdout', '!=', '')
-        | map(attribute='stdout')
-        | map('split', ':')
-        | map('last')
-        | map('split', ',')
-        | flatten
-        | map('trim')
-        | select('length')
-        | list
-        | unique
+        user_management_exempt_users + 
+        (item.stdout | split(':') | last | split(',') | map('trim') | select('length') | list)
       }}
+  loop: "{{ user_management_exempt_group_members_raw.results | default([]) }}"
+  when:
+    - user_management_audit_exempt_groups | length > 0
+    - user_management_exempt_group_members_raw is defined
+    - item.rc is defined
+    - item.rc == 0
+    - item.stdout is defined
+    - item.stdout != ""
+
+- name: Remove duplicates from exempt users list
+  ansible.builtin.set_fact:
+    user_management_exempt_users: "{{ user_management_exempt_users | unique }}"
   when: 
     - user_management_audit_exempt_groups | length > 0
     - user_management_exempt_group_members_raw is defined
