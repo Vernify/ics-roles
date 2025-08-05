@@ -65,6 +65,11 @@ Follow these guidelines to ensure consistency, security, and maintainability.
   - Prefer Mermaid for architecture and workflow diagrams.
   - Store diagrams in the relevant documentation directory.
 
+- **Changelog**
+  - Maintain a `CHANGELOG.md` in the root directory to track significant changes.
+  - Use a consistent format for entries (date, version, description).
+  - Ask before making changes to the changelog.Only after a successful merge do we update to prevent version runaway.
+
 ---
 
 ## Monitoring & Observability

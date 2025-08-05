@@ -11,13 +11,13 @@
     # Enable key_only functionality (required for key_only users)
     user_management_key_only_password_lock: true
     user_management_key_only_disable_expiry: true
-    
+
     user_management_groups:
       - name: "web_admins"
         sudo_rules:
           - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx"
           - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx"
-      
+
       - name: "automation_users"
         sudo_rules:
           - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl status *"
@@ -37,7 +37,7 @@
         key_only: true  # Password locked, no expiry, SSH keys only
         ssh_keys:
           - "ssh-rsa AAAAB3NzaC1yc2EAAA... jenkins@ci-server.com"
-      
+
       # Another key-only user
       - name: "ansible_user"
         group: "automation_users"
