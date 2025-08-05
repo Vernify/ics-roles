@@ -22,6 +22,7 @@
       {{
         user_management_exempt_group_members_raw.results
         | selectattr('stdout', 'defined')
+        | selectattr('stdout', '!=', '')
         | map(attribute='stdout')
         | map('split', ':')
         | map('last')
