@@ -1,5 +1,5 @@
 ---
-# Cleanup tasks for removed users
+# Cleanup tasks for removed users (only runs when user_management_remove_unknown_users is true)
 
 - name: Get list of current system users
   ansible.builtin.getent:

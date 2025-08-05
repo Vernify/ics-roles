@@ -319,6 +319,8 @@ The following tags are available for selective execution:
 - `user_management_users` - User creation and configuration
 - `user_management_ssh_keys` - SSH key management
 - `user_management_sudoers` - Sudoers configuration
+- `user_management_audit` - User audit reporting (always runs)
+- `user_management_cleanup` - User cleanup (only if enabled)
 
 ### Example Tag Usage
 
@@ -331,7 +333,48 @@ ansible-playbook playbook.yml --tags user_management_users
 
 # Update SSH keys only
 ansible-playbook playbook.yml --tags user_management_ssh_keys
+
+# Run user audit only (for monitoring/alerting)
+ansible-playbook playbook.yml --tags user_management_audit
 ```
+
+## User Auditing and Monitoring
+
+The role includes built-in auditing functionality that **always runs** to provide visibility into user management:
+
+### Audit Report Features:
+- Lists all managed users (defined in configuration)
+- Identifies unmanaged users on the system (excluding system accounts)
+- Shows total count of unmanaged users
+- Indicates whether cleanup is enabled
+- Provides warnings when unmanaged users are detected
+- Sets facts for integration with monitoring/alerting systems
+
+### Example Audit Output:
+```
+═══════════════════════════════════════════════════════════════
+USER MANAGEMENT AUDIT REPORT
+═══════════════════════════════════════════════════════════════
+Managed users (defined in config): alwyn, vimal
+Unmanaged users found on system: olduser1, tempuser
+Total unmanaged users: 2
+Cleanup enabled: false
+⚠️  WARNING: 2 unmanaged user(s) detected but cleanup is disabled
+═══════════════════════════════════════════════════════════════
+```
+
+### Integration with Monitoring:
+The audit sets the `user_management_audit_results` fact with structured data:
+```yaml
+user_management_audit_results:
+  managed_users: ["alwyn", "vimal"]
+  unmanaged_users: ["olduser1", "tempuser"]
+  unmanaged_count: 2
+  cleanup_enabled: false
+  timestamp: "2025-08-05T14:30:00Z"
+```
+
+This can be used with monitoring tools, log aggregation, or alerting systems to track user changes.
 
 ## Security Considerations
 

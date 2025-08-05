@@ -40,6 +40,12 @@
     - user_management_users
     - user_management_ssh_keys
 
+- name: User management audit (always run for monitoring)
+  ansible.builtin.import_tasks: user_audit.yml
+  tags:
+    - always
+    - user_management_audit
+
 - name: Cleanup removed users (if enabled)
   ansible.builtin.import_tasks: cleanup.yml
   when: user_management_remove_unknown_users | bool

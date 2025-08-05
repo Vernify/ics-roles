@@ -1,0 +1,49 @@
+---
+# User management audit tasks - always run for monitoring and alerting
+
+- name: Get list of current system users
+  ansible.builtin.getent:
+    database: passwd
+  register: user_management_current_users
+
+- name: Identify unmanaged users
+  ansible.builtin.set_fact:
+    user_management_unmanaged_users: >-
+      {{
+        user_management_current_users.ansible_facts.getent_passwd.keys() | list |
+        difference(user_management_users | map(attribute='name') | list) |
+        difference(['root', 'daemon', 'bin', 'sys', 'sync', 'games', 'man', 'lp', 'mail', 'news', 'uucp', 'proxy', 'www-data', 'backup', 'list', 'irc', 'gnats', 'nobody', 'systemd-network', 'systemd-resolve', 'syslog', 'messagebus', 'uuidd', 'dnsmasq', 'landscape', 'pollinate', 'sshd', 'ansible'])
+      }}
+
+- name: User management audit report
+  ansible.builtin.debug:
+    msg: |
+      ═══════════════════════════════════════════════════════════════
+      USER MANAGEMENT AUDIT REPORT
+      ═══════════════════════════════════════════════════════════════
+      Managed users (defined in config): {{ user_management_users | map(attribute='name') | list | join(', ') }}
+      Unmanaged users found on system: {{ user_management_unmanaged_users | join(', ') if user_management_unmanaged_users | length > 0 else 'None' }}
+      Total unmanaged users: {{ user_management_unmanaged_users | length }}
+      Cleanup enabled: {{ user_management_remove_unknown_users }}
+      {% if user_management_unmanaged_users | length > 0 and not user_management_remove_unknown_users %}
+      ⚠️  WARNING: {{ user_management_unmanaged_users | length }} unmanaged user(s) detected but cleanup is disabled
+      {% endif %}
+      {% if user_management_unmanaged_users | length > 0 and user_management_remove_unknown_users %}
+      🗑️  These users will be removed: {{ user_management_unmanaged_users | join(', ') }}
+      {% endif %}
+      ═══════════════════════════════════════════════════════════════
+  tags:
+    - always
+    - user_management_audit
+
+- name: Set fact for alerting systems
+  ansible.builtin.set_fact:
+    user_management_audit_results:
+      managed_users: "{{ user_management_users | map(attribute='name') | list }}"
+      unmanaged_users: "{{ user_management_unmanaged_users }}"
+      unmanaged_count: "{{ user_management_unmanaged_users | length }}"
+      cleanup_enabled: "{{ user_management_remove_unknown_users }}"
+      timestamp: "{{ ansible_date_time.iso8601 }}"
+  tags:
+    - always
+    - user_management_audit
