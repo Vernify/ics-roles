@@ -22,6 +22,7 @@
     user_management_exempt_users: >-
       {{
         user_management_exempt_group_members_raw.results
+        | rejectattr('skipped', 'defined')
         | selectattr('stdout', 'defined')
         | selectattr('stdout', '!=', '')
         | selectattr('stdout', 'match', '.*:.*')
