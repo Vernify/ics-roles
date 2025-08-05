@@ -5,6 +5,7 @@
   ansible.builtin.getent:
     database: passwd
   register: user_management_current_users
+  no_log: true
 
 - name: Get users in exempt groups
   ansible.builtin.command: "getent group {{ user_management_exempt_group }}"
@@ -23,7 +24,7 @@
         user_management_exempt_group_members_raw.results
         | selectattr('stdout', 'defined')
         | selectattr('stdout', '!=', '')
-        | selectattr('stdout', 'search', ':')
+        | selectattr('stdout', 'match', '.*:.*')
         | map(attribute='stdout')
         | map('split', ':')
         | map('last')
