@@ -70,3 +70,10 @@ user_management_account_expiration_days: 365
 # Cleanup settings
 user_management_remove_user_home: false
 user_management_backup_removed_users: true
+
+# Audit settings - groups whose members are exempt from cleanup/audit alerts
+user_management_audit_exempt_groups: []
+# Example:
+# user_management_audit_exempt_groups:
+#   - server_admins
+#   - org_admin_group

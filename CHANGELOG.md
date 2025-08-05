@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-08-05
+
+### Added
+- **User audit and exempt groups functionality** in `user_management` role
+  - New `user_management_audit_exempt_groups` variable to exempt organization-wide admin groups from cleanup/audit alerts
+  - Comprehensive user audit reporting that always runs for monitoring and alerting integration
+  - Structured audit facts (`user_management_audit_results`) for integration with monitoring systems
+  - Security alerting for exempt group members not managed in code
+  - Support for layered user management (org-wide + project-specific users)
+
+### Enhanced
+- **Improved cleanup logic** - now reuses audit logic to properly handle exempt groups
+- **Key-only user functionality** - simplified to use only `key_only: true` per user (removed global variables)
+- **Documentation** - comprehensive coverage of audit, exempt groups, and monitoring integration
+- **Code quality** - fixed ansible-lint issues (loop variable prefix, trailing spaces)
+
+### Changed
+- Simplified key-only user implementation - removed global `user_management_key_only_*` variables
+- Users with `key_only: true` now automatically get password set to '!' and expiry disabled
+- Cleanup tasks now reuse audit logic instead of duplicating user identification logic
+- Enhanced audit output to include exempt groups and security alerts
+
+### Technical Details
+- Backward compatible - all existing functionality preserved
+- Exempt groups feature is opt-in via `user_management_audit_exempt_groups: []`
+- Audit always runs and provides structured output for monitoring integration
+- Security-focused design alerts on exempt users not managed in code
+
 ## [1.1.0] - 2025-08-05
 
 ### Added

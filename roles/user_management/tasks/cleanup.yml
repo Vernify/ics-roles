@@ -1,19 +1,10 @@
 ---
 # Cleanup tasks for removed users (only runs when user_management_remove_unknown_users is true)
+# Note: The audit task (user_audit.yml) must run first to populate user_management_unmanaged_users
 
-- name: Get list of current system users
-  ansible.builtin.getent:
-    database: passwd
-  register: user_management_current_users
-
-- name: Identify users to remove
+- name: Use unmanaged users list from audit for cleanup
   ansible.builtin.set_fact:
-    user_management_users_to_remove: >-
-      {{
-        user_management_current_users.ansible_facts.getent_passwd.keys() | list |
-        difference(user_management_users | map(attribute='name') | list) |
-        difference(['root', 'daemon', 'bin', 'sys', 'sync', 'games', 'man', 'lp', 'mail', 'news', 'uucp', 'proxy', 'www-data', 'backup', 'list', 'irc', 'gnats', 'nobody', 'systemd-network', 'systemd-resolve', 'syslog', 'messagebus', 'uuidd', 'dnsmasq', 'landscape', 'pollinate', 'sshd', 'ansible'])
-      }}
+    user_management_users_to_remove: "{{ user_management_unmanaged_users | default([]) }}"
 
 - name: Backup home directories of users to be removed
   community.general.archive:

@@ -6,14 +6,57 @@
     database: passwd
   register: user_management_current_users
 
-- name: Identify unmanaged users
+- name: Get users in exempt groups
+  ansible.builtin.command: "getent group {{ user_management_exempt_group }}"
+  register: user_management_exempt_group_members_raw
+  loop: "{{ user_management_audit_exempt_groups }}"
+  loop_control:
+    loop_var: user_management_exempt_group
+  changed_when: false
+  failed_when: false
+  when: user_management_audit_exempt_groups | length > 0
+
+- name: Build list of exempt users from groups
+  ansible.builtin.set_fact:
+    user_management_exempt_users: >-
+      {{
+        user_management_exempt_group_members_raw.results
+        | selectattr('stdout', 'defined')
+        | map(attribute='stdout')
+        | map('split', ':')
+        | map('last')
+        | map('split', ',')
+        | sum(start=[])
+        | map('trim')
+        | select('length')
+        | list
+        | unique
+      }}
+  when: user_management_audit_exempt_groups | length > 0
+
+- name: Set empty exempt users list if no exempt groups
+  ansible.builtin.set_fact:
+    user_management_exempt_users: []
+  when: user_management_audit_exempt_groups | length == 0
+
+- name: Identify unmanaged users (excluding exempt group members)
   ansible.builtin.set_fact:
     user_management_unmanaged_users: >-
       {{
         user_management_current_users.ansible_facts.getent_passwd.keys() | list |
         difference(user_management_users | map(attribute='name') | list) |
+        difference(user_management_exempt_users) |
         difference(['root', 'daemon', 'bin', 'sys', 'sync', 'games', 'man', 'lp', 'mail', 'news', 'uucp', 'proxy', 'www-data', 'backup', 'list', 'irc', 'gnats', 'nobody', 'systemd-network', 'systemd-resolve', 'syslog', 'messagebus', 'uuidd', 'dnsmasq', 'landscape', 'pollinate', 'sshd', 'ansible'])
       }}
+
+- name: Identify exempt users not managed in code (security alert)
+  ansible.builtin.set_fact:
+    user_management_exempt_unmanaged_users: >-
+      {{
+        user_management_exempt_users |
+        difference(user_management_users | map(attribute='name') | list)
+      }}
+  when: user_management_audit_exempt_groups | length > 0
 
 - name: User management audit report
   ansible.builtin.debug:
@@ -22,6 +65,8 @@
       USER MANAGEMENT AUDIT REPORT
       ═══════════════════════════════════════════════════════════════
       Managed users (defined in config): {{ user_management_users | map(attribute='name') | list | join(', ') }}
+      Exempt groups: {{ user_management_audit_exempt_groups | join(', ') if user_management_audit_exempt_groups | length > 0 else 'None' }}
+      Exempt users (from groups): {{ user_management_exempt_users | join(', ') if user_management_exempt_users | length > 0 else 'None' }}
       Unmanaged users found on system: {{ user_management_unmanaged_users | join(', ') if user_management_unmanaged_users | length > 0 else 'None' }}
       Total unmanaged users: {{ user_management_unmanaged_users | length }}
       Cleanup enabled: {{ user_management_remove_unknown_users }}
@@ -30,6 +75,9 @@
       {% endif %}
       {% if user_management_unmanaged_users | length > 0 and user_management_remove_unknown_users %}
       🗑️  These users will be removed: {{ user_management_unmanaged_users | join(', ') }}
+      {% endif %}
+      {% if user_management_exempt_unmanaged_users is defined and user_management_exempt_unmanaged_users | length > 0 %}
+      🚨 SECURITY ALERT: Users in exempt groups not managed in code: {{ user_management_exempt_unmanaged_users | join(', ') }}
       {% endif %}
       ═══════════════════════════════════════════════════════════════
   tags:
@@ -40,6 +88,9 @@
   ansible.builtin.set_fact:
     user_management_audit_results:
       managed_users: "{{ user_management_users | map(attribute='name') | list }}"
+      exempt_groups: "{{ user_management_audit_exempt_groups }}"
+      exempt_users: "{{ user_management_exempt_users }}"
+      exempt_unmanaged_users: "{{ user_management_exempt_unmanaged_users | default([]) }}"
       unmanaged_users: "{{ user_management_unmanaged_users }}"
       unmanaged_count: "{{ user_management_unmanaged_users | length }}"
       cleanup_enabled: "{{ user_management_remove_unknown_users }}"

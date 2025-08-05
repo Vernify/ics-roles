@@ -36,6 +36,7 @@ This role is designed to be used in customer-specific repositories where you nee
 | `user_management_create_home_dirs` | `true` | Create home directories for users |
 | `user_management_remove_unknown_users` | `false` | Remove users not in the configuration |
 | `user_management_sudoers_dir` | `"/etc/sudoers.d"` | Directory for sudoers files |
+| `user_management_audit_exempt_groups` | `[]` | Groups whose members are exempt from audit/cleanup |
 
 ### User-Level Variables
 
@@ -338,14 +339,40 @@ ansible-playbook playbook.yml --tags user_management_ssh_keys
 ansible-playbook playbook.yml --tags user_management_audit
 ```
 
+## Exempt Groups for Layered User Management
+
+For organizations with layered user management (where some users are managed at the org level vs project level), you can exempt certain groups from audit/cleanup operations:
+
+```yaml
+user_management_audit_exempt_groups:
+  - saicom_admins      # Org-wide admin group
+  - org_admin_group    # Another org-level group
+```
+
+### How Exempt Groups Work:
+- Users in exempt groups are excluded from "unmanaged users" reporting
+- They won't be subject to cleanup operations
+- The audit will still report on them for visibility
+- **Security Alert**: If exempt group members are not defined in code, a security alert is generated
+
+### Use Cases:
+- **Centralized Admin Users**: Org-wide admin accounts managed separately
+- **Service Accounts**: System accounts that exist on all servers
+- **Inherited Groups**: Groups created by other configuration management tools
+
+### Security Considerations:
+Users in exempt groups should still be managed in code somewhere for full accountability. The audit will alert if exempt users are not managed, helping identify potential security risks.
+
 ## User Auditing and Monitoring
 
 The role includes built-in auditing functionality that **always runs** to provide visibility into user management:
 
 ### Audit Report Features:
 - Lists all managed users (defined in configuration)
-- Identifies unmanaged users on the system (excluding system accounts)
+- Lists exempt groups and their members (if configured)
+- Identifies unmanaged users on the system (excluding system accounts and exempt group members)
 - Shows total count of unmanaged users
+- Alerts when exempt group members are not managed in code (security concern)
 - Indicates whether cleanup is enabled
 - Provides warnings when unmanaged users are detected
 - Sets facts for integration with monitoring/alerting systems
@@ -356,10 +383,13 @@ The role includes built-in auditing functionality that **always runs** to provid
 USER MANAGEMENT AUDIT REPORT
 ═══════════════════════════════════════════════════════════════
 Managed users (defined in config): alwyn, vimal
+Exempt groups: saicom_admins, org_admin_group
+Exempt users (from groups): org_admin1, saicom_admin2
 Unmanaged users found on system: olduser1, tempuser
 Total unmanaged users: 2
 Cleanup enabled: false
 ⚠️  WARNING: 2 unmanaged user(s) detected but cleanup is disabled
+🚨 SECURITY ALERT: Users in exempt groups not managed in code: saicom_admin2
 ═══════════════════════════════════════════════════════════════
 ```
 
@@ -368,6 +398,9 @@ The audit sets the `user_management_audit_results` fact with structured data:
 ```yaml
 user_management_audit_results:
   managed_users: ["alwyn", "vimal"]
+  exempt_groups: ["saicom_admins", "org_admin_group"]
+  exempt_users: ["org_admin1", "saicom_admin2"]
+  exempt_unmanaged_users: ["saicom_admin2"]
   unmanaged_users: ["olduser1", "tempuser"]
   unmanaged_count: 2
   cleanup_enabled: false
