@@ -7,7 +7,7 @@
   become: true
   roles:
     - ics.common.user_management
-  
+
   vars:
     # Define groups with specific sudo rules
     user_management_groups:
@@ -20,7 +20,7 @@
           - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart customer-app"
           - "ALL=(ALL) NOPASSWD: /opt/customer-app/scripts/deploy.sh"
         state: present
-      
+
       - name: "customer_a_developers"
         gid: 3002
         sudo_rules:
@@ -29,7 +29,7 @@
           - "ALL=(ALL) NOPASSWD: /bin/cat /var/log/nginx/*.log"
           - "ALL=(ALL) NOPASSWD: /bin/cat /var/log/customer-app/*.log"
         state: present
-    
+
     # Define users and assign them to groups
     user_management_users:
       - name: "alice"
@@ -41,7 +41,7 @@
           - "{{ vault_alice_ssh_key }}"
         comment: "Alice - Customer A Web Admin"
         state: present
-      
+
       - name: "bob"
         uid: 2002
         group: "customer_a_web_admins"
@@ -50,7 +50,6 @@
           - "{{ vault_bob_ssh_key }}"
         comment: "Bob - Customer A Web Admin"
         state: present
-      
       - name: "charlie"
         uid: 2003
         group: "customer_a_developers"

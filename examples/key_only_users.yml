@@ -1,0 +1,52 @@
+---
+# Example playbook demonstrating key_only users
+# This shows backward compatibility and new key_only functionality
+
+- name: Demo key_only users alongside regular users
+  hosts: localhost
+  become: true
+  roles:
+    - ics.common.user_management
+  vars:
+    # Enable key_only functionality (required for key_only users)
+    user_management_key_only_password_lock: true
+    user_management_key_only_disable_expiry: true
+    
+    user_management_groups:
+      - name: "web_admins"
+        sudo_rules:
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx"
+      
+      - name: "automation_users"
+        sudo_rules:
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl status *"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/docker ps"
+
+    user_management_users:
+      # Regular user with password (existing behavior - unchanged)
+      - name: "admin_user"
+        group: "web_admins"
+        password: "{{ vault_admin_password }}"
+        ssh_keys:
+          - "ssh-rsa AAAAB3NzaC1yc2EAAA... admin@company.com"
+
+      # Key-only user (new functionality)
+      - name: "jenkins_user"
+        group: "automation_users"
+        key_only: true  # Password locked, no expiry, SSH keys only
+        ssh_keys:
+          - "ssh-rsa AAAAB3NzaC1yc2EAAA... jenkins@ci-server.com"
+      
+      # Another key-only user
+      - name: "ansible_user"
+        group: "automation_users"
+        key_only: true
+        ssh_keys:
+          - "ssh-rsa AAAAB3NzaC1yc2EAAA... ansible@automation.com"
+
+      # Regular user without password (existing behavior - unchanged)
+      - name: "monitor_user"
+        group: "web_admins"
+        ssh_keys:
+          - "ssh-rsa AAAAB3NzaC1yc2EAAA... monitor@company.com"

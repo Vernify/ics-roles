@@ -36,6 +36,14 @@ This role is designed to be used in customer-specific repositories where you nee
 | `user_management_create_home_dirs` | `true` | Create home directories for users |
 | `user_management_remove_unknown_users` | `false` | Remove users not in the configuration |
 | `user_management_sudoers_dir` | `"/etc/sudoers.d"` | Directory for sudoers files |
+| `user_management_key_only_password_lock` | `false` | Set password to '!' for users with `key_only: true` (must be enabled) |
+| `user_management_key_only_disable_expiry` | `false` | Disable account expiry for users with `key_only: true` (must be enabled) |
+
+### User-Level Variables
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `key_only` | Boolean | If `true`, locks password and disables expiry for SSH-only authentication |
 
 ## Variable Structure
 
@@ -122,6 +130,50 @@ user_management_users:
       - "ssh-rsa AAAAB3NzaC1yc2EAAA... monitor1@company.com"
     state: present
 ```
+
+### Key-Only Users (SSH Authentication Only)
+
+For users who should only authenticate via SSH keys and never use passwords, you need to enable the key_only functionality:
+
+```yaml
+---
+- name: Create key-only users for automation
+  hosts: all
+  become: true
+  roles:
+    - ics.common.user_management
+  vars:
+    # Enable key_only functionality (required for key_only users to work)
+    user_management_key_only_password_lock: true
+    user_management_key_only_disable_expiry: true
+    
+    user_management_groups:
+      - name: "automation_users"
+        sudo_rules:
+          - "ALL=(ALL) NOPASSWD: /usr/bin/systemctl status *"
+          - "ALL=(ALL) NOPASSWD: /usr/bin/docker ps"
+    
+    user_management_users:
+      - name: "jenkins_user"
+        group: "automation_users"
+        key_only: true  # Requires the above settings to be enabled
+        ssh_keys:
+          - "{{ vault_jenkins_ssh_key }}"
+      - name: "ansible_user"
+        group: "automation_users"
+        key_only: true
+        ssh_keys:
+          - "{{ vault_ansible_ssh_key }}"
+```
+
+**Key-only user behavior:**
+- Must enable `user_management_key_only_password_lock: true` to set password to '!'
+- Must enable `user_management_key_only_disable_expiry: true` for expiry disabling
+- Password is set to '!' (no password authentication possible, exempt from expiry rules)
+- Account expiry is disabled (unless explicitly set)
+- SSH key authentication still works normally
+- Completely backward compatible - existing users without `key_only` are unaffected
+- Feature is completely opt-in - defaults to disabled
 
 ## Example Playbooks
 

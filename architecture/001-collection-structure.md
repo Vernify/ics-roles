@@ -30,7 +30,6 @@ ics/
 │   │   ├── inventory/           # Inventory plugins
 │   │   └── filter/              # Filter plugins
 │   └── roles/
-│       ├── linux_base/          # Base Linux configuration
 │       ├── security_hardening/  # Security hardening
 │       ├── monitoring_agent/    # Monitoring setup
 │       ├── backup_client/       # Backup configuration

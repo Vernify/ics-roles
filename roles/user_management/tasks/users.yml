@@ -10,14 +10,23 @@
     shell: "{{ user_management_user.shell | default(user_management_default_shell) }}"
     home: "{{ user_management_user.home | default('/home/' + user_management_user.name) }}"
     create_home: "{{ user_management_user.create_home | default(user_management_create_home_dirs) }}"
-    password: "{{ user_management_user.password | default(omit) }}"
+    password: >-
+      {{
+        '!'
+        if (user_management_user.key_only | default(false) and user_management_key_only_password_lock)
+        else (user_management_user.password | default(omit))
+      }}
     comment: "{{ user_management_user.comment | default(omit) }}"
     system: "{{ user_management_user.system | default(false) }}"
     expires: >-
       {{
-        (ansible_date_time.epoch | int + (user_management_account_expiration_days * 86400))
-        if (user_management_account_expiration_enabled and user_management_user.expires is not defined)
-        else (user_management_user.expires | default(omit))
+        omit
+        if (user_management_user.key_only | default(false) and user_management_key_only_disable_expiry)
+        else (
+          (ansible_date_time.epoch | int + (user_management_account_expiration_days * 86400))
+          if (user_management_account_expiration_enabled and user_management_user.expires is not defined)
+          else (user_management_user.expires | default(omit))
+        )
       }}
     state: "{{ user_management_user.state | default('present') }}"
   become: true
@@ -77,3 +86,4 @@
     - user_management_users | length > 0
     - user_management_user.state | default('present') == 'present'
     - user_management_user.password is not defined
+    - not (user_management_user.key_only | default(false))
