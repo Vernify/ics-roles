@@ -8,10 +8,6 @@
   roles:
     - ics.common.user_management
   vars:
-    # Enable key_only functionality (required for key_only users)
-    user_management_key_only_password_lock: true
-    user_management_key_only_disable_expiry: true
-
     user_management_groups:
       - name: "web_admins"
         sudo_rules:

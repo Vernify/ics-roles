@@ -13,7 +13,7 @@
     password: >-
       {{
         '!'
-        if (user_management_user.key_only | default(false) and user_management_key_only_password_lock)
+        if (user_management_user.key_only | default(false))
         else (user_management_user.password | default(omit))
       }}
     comment: "{{ user_management_user.comment | default(omit) }}"
@@ -21,7 +21,7 @@
     expires: >-
       {{
         omit
-        if (user_management_user.key_only | default(false) and user_management_key_only_disable_expiry)
+        if (user_management_user.key_only | default(false))
         else (
           (ansible_date_time.epoch | int + (user_management_account_expiration_days * 86400))
           if (user_management_account_expiration_enabled and user_management_user.expires is not defined)

@@ -36,8 +36,6 @@ This role is designed to be used in customer-specific repositories where you nee
 | `user_management_create_home_dirs` | `true` | Create home directories for users |
 | `user_management_remove_unknown_users` | `false` | Remove users not in the configuration |
 | `user_management_sudoers_dir` | `"/etc/sudoers.d"` | Directory for sudoers files |
-| `user_management_key_only_password_lock` | `false` | Set password to '!' for users with `key_only: true` (must be enabled) |
-| `user_management_key_only_disable_expiry` | `false` | Disable account expiry for users with `key_only: true` (must be enabled) |
 
 ### User-Level Variables
 
@@ -133,7 +131,7 @@ user_management_users:
 
 ### Key-Only Users (SSH Authentication Only)
 
-For users who should only authenticate via SSH keys and never use passwords, you need to enable the key_only functionality:
+For users who should only authenticate via SSH keys and never use passwords:
 
 ```yaml
 ---
@@ -143,10 +141,6 @@ For users who should only authenticate via SSH keys and never use passwords, you
   roles:
     - ics.common.user_management
   vars:
-    # Enable key_only functionality (required for key_only users to work)
-    user_management_key_only_password_lock: true
-    user_management_key_only_disable_expiry: true
-    
     user_management_groups:
       - name: "automation_users"
         sudo_rules:
@@ -156,7 +150,7 @@ For users who should only authenticate via SSH keys and never use passwords, you
     user_management_users:
       - name: "jenkins_user"
         group: "automation_users"
-        key_only: true  # Requires the above settings to be enabled
+        key_only: true  # Password set to '!' and expiry disabled
         ssh_keys:
           - "{{ vault_jenkins_ssh_key }}"
       - name: "ansible_user"
@@ -164,16 +158,21 @@ For users who should only authenticate via SSH keys and never use passwords, you
         key_only: true
         ssh_keys:
           - "{{ vault_ansible_ssh_key }}"
+      - name: "regular_user"
+        group: "automation_users"
+        # No key_only flag - normal user with password/expiry rules
+        password: "{{ vault_regular_password }}"
+        ssh_keys:
+          - "{{ vault_regular_ssh_key }}"
 ```
 
 **Key-only user behavior:**
-- Must enable `user_management_key_only_password_lock: true` to set password to '!'
-- Must enable `user_management_key_only_disable_expiry: true` for expiry disabling
-- Password is set to '!' (no password authentication possible, exempt from expiry rules)
-- Account expiry is disabled (unless explicitly set)
+- Simply set `key_only: true` on any user
+- Password is automatically set to '!' (no password authentication possible)
+- Account expiry is automatically disabled (unless explicitly set)
 - SSH key authentication still works normally
+- Can be mixed with regular users in the same configuration
 - Completely backward compatible - existing users without `key_only` are unaffected
-- Feature is completely opt-in - defaults to disabled
 
 ## Example Playbooks
 

@@ -63,10 +63,6 @@ user_management_password_max_age: 90
 user_management_password_min_age: 1
 user_management_password_warn_age: 7
 
-# Key-only user settings (for SSH key authentication without passwords)
-user_management_key_only_password_lock: false  # Set password to '!' for key_only users (opt-in)
-user_management_key_only_disable_expiry: false  # Disable account expiry for key_only users (opt-in)
-
 # Account expiration
 user_management_account_expiration_enabled: false
 user_management_account_expiration_days: 365
