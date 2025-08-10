@@ -1,0 +1,10 @@
+- name: Restart telegraf
+  ansible.builtin.service:
+    name: telegraf
+    state: restarted
+
+- name: Ensure Telegraf is running
+  ansible.builtin.service:
+    name: telegraf
+    state: started
+    enabled: true

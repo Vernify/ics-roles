@@ -1,0 +1,8 @@
+---
+- name: Ensure Telegraf is installed
+  ansible.builtin.import_tasks: install.yml
+  tags: telegraf
+
+- name: Ensure Telegraf is configure
+  ansible.builtin.import_tasks: configure.yml
+  tags: telegraf

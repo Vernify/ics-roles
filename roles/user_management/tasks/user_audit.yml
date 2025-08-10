@@ -33,7 +33,7 @@
         | list
         | unique
       }}
-  when: 
+  when:
     - user_management_audit_exempt_groups | length > 0
     - user_management_exempt_group_members_raw is defined
 

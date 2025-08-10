@@ -1,0 +1,6 @@
+# Template: graphite.conf.j2
+[[outputs.graphite]]
+  servers = [{% for server in telegraf_graphite_servers %}"{{ server }}"{% if not loop.last %},{% endif %}{% endfor %}]
+  prefix = "telegraf.saicom_io.{{ telegraf_app }}.{{ ansible_hostname }}.metrics"
+  template = "measurement.field"
+  timeout = "2s" 

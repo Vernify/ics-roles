@@ -1,0 +1,54 @@
+---
+- name: Ensure Telegraf repo and GPG key on Ubuntu/Debian
+  when: ansible_os_family == 'Debian'
+  vars:
+    influx_key:
+      stat:
+        exists: "{{ lookup('ansible.builtin.stat', '/etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg').stat.exists }}"
+  block:
+    - name: Download the GPG key for the InfluxDB repo
+      ansible.builtin.get_url:
+        url: https://repos.influxdata.com/influxdata-archive_compat.key
+        dest: /tmp/influxdata-archive_compat.key
+        mode: '0644'
+
+    - name: Install the Apt key if not present
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          echo '393e8779c89ac8d958f81f942f9ad7fb82a25e133faddaf92e15b16e6ac9ce4c influxdata-archive_compat.key' | sha256sum -c && cat /tmp/influxdata-archive_compat.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg > /dev/null
+      args:
+        chdir: /tmp
+        executable: /bin/bash
+      changed_when: true
+      when: not influx_key.stat.exists
+
+    - name: Ensure the influxDB repo exists
+      ansible.builtin.apt_repository:
+        filename: influxdb
+        repo: 'deb [signed-by=/etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg] https://repos.influxdata.com/debian stable main'
+        state: present
+        update_cache: true
+
+- name: Ensure Telegraf repo on SLES
+  community.general.zypper_repository:
+    name: influxdb
+    repo: 'https://repos.influxdata.com/sles/{{ ansible_distribution_major_version }}/x86_64/stable'
+    state: present
+    auto_import_keys: true
+  when: ansible_os_family == 'Suse'
+
+- name: Ensure Telegraf repo on Rocky/CentOS/RHEL
+  ansible.builtin.yum_repository:
+    name: influxdb
+    description: InfluxDB Repository
+    baseurl: https://repos.influxdata.com/rhel/$releasever/$basearch/stable
+    gpgcheck: true
+    enabled: true
+    gpgkey: https://repos.influxdata.com/influxdata-archive_compat.key
+  when: ansible_os_family == 'RedHat'
+
+- name: Install Telegraf package
+  ansible.builtin.package:
+    name: telegraf
+    state: present

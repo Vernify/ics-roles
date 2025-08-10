@@ -1,0 +1,30 @@
+- name: Include Telegraf configuration template
+  ansible.builtin.template:
+    src: telegraf.conf.j2
+    dest: /etc/telegraf/telegraf.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart telegraf
+
+- name: Transfer Telegraf configuration files
+  ansible.builtin.copy:
+    src: "{{ telegraf_base_item }}"
+    dest: /etc/telegraf/telegraf.d/
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ query('fileglob', role_path ~ '/files/*.conf') }}"
+  loop_control:
+    loop_var: telegraf_base_item
+  notify: Restart telegraf
+
+- name: Deploy Graphite output config
+  ansible.builtin.template:
+    src: graphite.conf.j2
+    dest: /etc/telegraf/telegraf.d/graphite.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart telegraf
+  tags: ['telegraf', 'graphite', 'monitoring']

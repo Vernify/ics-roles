@@ -1,0 +1,6 @@
+---
+telegraf_base_app: 'generic'
+telegraf_base_domain: "{{ ansible_domain }}"
+telegraf_base_source: 'metrics'
+telegraf_base_graphite_servers:
+  - "graphite.{{ ansible_domain }}:2003"

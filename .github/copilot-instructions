@@ -69,6 +69,9 @@ Follow these guidelines to ensure consistency, security, and maintainability.
   - Maintain a `CHANGELOG.md` in the root directory to track significant changes.
   - Use a consistent format for entries (date, version, description).
   - Ask before making changes to the changelog.Only after a successful merge do we update to prevent version runaway.
+  
+- **Housekeeping**
+  - Always ensure documentation is kept up to date, and relevant. Prompt if there are sections that are not relevant to the code in the project, as they will likely have to be removed.
 
 ---
 

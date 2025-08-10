@@ -1,0 +1,27 @@
+# Template: telegraf-mongodb.conf.j2
+# --- Legacy MongoDB Telegraf Config Reference ---
+# [[inputs.mongodb]]
+#   servers = ["mongodb://{{ vault_db_monitoring_username }}:{{ vault_db_monitoring_password | urlencode }}@localhost:27017/admin?authSource=admin"]
+#   gather_perdb_stats = true
+#   gather_replica_set_stats = true
+#   gather_cluster_stats = true
+#   interval = "10s"
+#   tagexclude = ["host"]
+#   [inputs.mongodb.tags]
+#     saicom_env = "{{ saicom_env | default('dev') }}"
+#     saicom_role = "mosaic"
+#     saicom_fqdn = "{{ ansible_fqdn | default(inventory_hostname) }}"
+#
+# --- End Legacy Reference ---
+
+[[inputs.mongodb]]
+  servers = ["mongodb://{{ vault_db_monitoring_username }}:{{ vault_db_monitoring_password | urlencode }}@localhost:27017/admin?authSource=admin"]
+  gather_perdb_stats = true
+  interval = "10s"
+  tagexclude = ["host"]
+  [inputs.mongodb.tags]
+    saicom_env = "{{ saicom_env | default('dev') }}"
+    saicom_role = "mosaic"
+    saicom_fqdn = "{{ ansible_fqdn | default(inventory_hostname) }}"
+
+# Output is handled by the main telegraf config, which should use the graphite template below. 
