@@ -10,7 +10,7 @@ if [ $# -ne 1 ]; then
 fi
 
 VERSION="$1"
-TAG="v$VERSION"
+TAG="$VERSION"
 
 echo "Tagging current commit as $TAG (force if exists) and pushing to origin..."
 
