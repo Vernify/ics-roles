@@ -93,17 +93,20 @@
     - always
     - user_management_audit
 
-- name: Set fact for alerting systems
-  ansible.builtin.set_fact:
-    user_management_audit_results:
-      managed_users: "{{ user_management_users | map(attribute='name') | list }}"
-      exempt_groups: "{{ user_management_audit_exempt_groups }}"
-      exempt_users: "{{ user_management_exempt_users }}"
-      exempt_unmanaged_users: "{{ user_management_exempt_unmanaged_users | default([]) }}"
-      unmanaged_users: "{{ user_management_unmanaged_users }}"
-      unmanaged_count: "{{ user_management_unmanaged_users | length }}"
-      cleanup_enabled: "{{ user_management_remove_unknown_users }}"
-      timestamp: "{{ ansible_date_time.iso8601 }}"
-  tags:
-    - always
-    - user_management_audit
+# - name: Set fact for alerting systems
+#   ansible.builtin.set_fact:
+#     user_management_audit_results:
+#       managed_users: "{{ user_management_users | map(attribute='name') | list }}"
+#       exempt_groups: "{{ user_management_audit_exempt_groups }}"
+#       exempt_users: "{{ user_management_exempt_users }}"
+#       exempt_unmanaged_users: "{{ user_management_exempt_unmanaged_users | default([]) }}"
+#       unmanaged_users: "{{ user_management_unmanaged_users }}"
+#       unmanaged_count: "{{ user_management_unmanaged_users | length }}"
+#       cleanup_enabled: "{{ user_management_remove_unknown_users }}"
+#       timestamp: "{{ ansible_date_time.iso8601 }}"
+#       all_exempt_culprits: >-
+#         {{ (user_management_exempt_users | default([])) + (user_management_exempt_unmanaged_users | default([])) | unique | list }}
+#   tags:
+#     - always
+#     - user_management_audit
+# 
