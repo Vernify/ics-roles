@@ -1,11 +1,11 @@
 ---
 namespace: ics
 name: common
-version: 1.1.1
+version: 1.2.0
 readme: README.md
 
 authors:
-  - ICS Infrastructure Team <infrastructure@ics.com>
+  - ICS Infrastructure Team
 
 description: >-
   ICS Common Ansible Collection providing reusable infrastructure automation
