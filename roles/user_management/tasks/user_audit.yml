@@ -67,28 +67,21 @@
       }}
   when: user_management_audit_exempt_groups | length > 0
 
-- name: User management audit report
   ansible.builtin.debug:
-    msg: |
-      ═══════════════════════════════════════════════════════════════
-      USER MANAGEMENT AUDIT REPORT
-      ═══════════════════════════════════════════════════════════════
-      Managed users (defined in config): {{ user_management_users | map(attribute='name') | list | join(', ') }}
-      Exempt groups: {{ user_management_audit_exempt_groups | join(', ') if user_management_audit_exempt_groups | length > 0 else 'None' }}
-      Exempt users (from groups): {{ user_management_exempt_users | join(', ') if user_management_exempt_users | length > 0 else 'None' }}
-      Unmanaged users found on system: {{ user_management_unmanaged_users | join(', ') if user_management_unmanaged_users | length > 0 else 'None' }}
-      Total unmanaged users: {{ user_management_unmanaged_users | length }}
-      Cleanup enabled: {{ user_management_remove_unknown_users }}
-      {% if user_management_unmanaged_users | length > 0 and not user_management_remove_unknown_users %}
-      ⚠️  WARNING: {{ user_management_unmanaged_users | length }} unmanaged user(s) detected but cleanup is disabled
-      {% endif %}
-      {% if user_management_unmanaged_users | length > 0 and user_management_remove_unknown_users %}
-      🗑️  These users will be removed: {{ user_management_unmanaged_users | join(', ') }}
-      {% endif %}
-      {% if user_management_exempt_unmanaged_users is defined and user_management_exempt_unmanaged_users | length > 0 %}
-      🚨 SECURITY ALERT: Users in exempt groups not managed in code: {{ user_management_exempt_unmanaged_users | join(', ') }}
-      {% endif %}
-      ═══════════════════════════════════════════════════════════════
+    msg:
+      - "═══════════════════════════════════════════════════════════════"
+      - "USER MANAGEMENT AUDIT REPORT"
+      - "═══════════════════════════════════════════════════════════════"
+      - "Managed users (defined in config): {{ user_management_users | map(attribute='name') | list | join(', ') }}"
+      - "Exempt groups: {{ user_management_audit_exempt_groups | join(', ') if user_management_audit_exempt_groups | length > 0 else 'None' }}"
+      - "Exempt users (from groups): {{ user_management_exempt_users | join(', ') if user_management_exempt_users | length > 0 else 'None' }}"
+      - "Unmanaged users found on system: {{ user_management_unmanaged_users | join(', ') if user_management_unmanaged_users | length > 0 else 'None' }}"
+      - "Total unmanaged users: {{ user_management_unmanaged_users | length }}"
+      - "Cleanup enabled: {{ user_management_remove_unknown_users }}"
+      - "{% if user_management_unmanaged_users | length > 0 and not user_management_remove_unknown_users %}⚠️  WARNING: {{ user_management_unmanaged_users | length }} unmanaged user(s) detected but cleanup is disabled{% endif %}"
+      - "{% if user_management_unmanaged_users | length > 0 and user_management_remove_unknown_users %}🗑️  These users will be removed: {{ user_management_unmanaged_users | join(', ') }}{% endif %}"
+      - "{% if user_management_exempt_unmanaged_users is defined and user_management_exempt_unmanaged_users | length > 0 %}🚨 SECURITY ALERT: Users in exempt groups not managed in code: {{ user_management_exempt_unmanaged_users | join(', ') }}{% else %}All exempt users are managed in code.{% endif %}"
+      - "═══════════════════════════════════════════════════════════════"
   tags:
     - always
     - user_management_audit
