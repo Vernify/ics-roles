@@ -67,6 +67,7 @@
       }}
   when: user_management_audit_exempt_groups | length > 0
 
+- name: User management audit report
   ansible.builtin.debug:
     msg:
       - "═══════════════════════════════════════════════════════════════"
