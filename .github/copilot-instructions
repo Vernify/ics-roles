@@ -29,6 +29,7 @@ Follow these guidelines to ensure consistency, security, and maintainability.
 - **Secrets:** Store all sensitive data in Ansible Vault or Hashicorp Vault. Never commit secrets or vault passwords to version control.
 - **Quality:** Use `ansible-lint` and pre-commit hooks for code quality.
 - **Documentation:** Document the purpose and usage of playbooks and roles in the knowledgebase.
+- **Versioning** Always update galaxy.yml, requirements.yml, and any metadata that pertains to a role or collection version once a change has been marked as successful.
 
 ---
 
