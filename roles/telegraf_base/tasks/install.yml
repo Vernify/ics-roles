@@ -1,11 +1,12 @@
 ---
 - name: Ensure Telegraf repo and GPG key on Ubuntu/Debian
   when: ansible_os_family == 'Debian'
-  vars:
-    influx_key:
-      stat:
-        exists: "{{ lookup('ansible.builtin.stat', '/etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg').stat.exists }}"
   block:
+    - name: Check if influx apt key exists
+      ansible.builtin.stat:
+        path: /etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg
+      register: influx_key
+
     - name: Fetch InfluxDB GPG key (try uri, fallback to curl)
       block:
         - name: Attempt to fetch key using ansible.builtin.uri
@@ -25,6 +26,7 @@
           ansible.builtin.command: curl -fsSL -o /tmp/influxdata-archive_compat.key https://repos.influxdata.com/influxdata-archive_compat.key
           args:
             creates: /tmp/influxdata-archive_compat.key
+      when: not influx_key.stat.exists
 
     - name: Install the Apt key if not present
       ansible.builtin.shell:
