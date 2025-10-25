@@ -35,3 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - monitoring_common: Ensures Docker network exists via `monitoring_common_network_name` (unchanged default `monitoring`).
 - New role: `storage_grow_pv` to rescan block devices, grow partitions with `growpart`, and `pvresize` when a disk has a single PV; skips multi-PV disks.
 - Defaults: Improved cross-org defaults; domains are no longer hardcoded in roles.
+
+## [2.0.1] - 2025-10-26
+
+### Fixed
+- `storage_grow_pv`: Compatibility with Ansible 2.14.x
+  - Use `ansible.builtin.shell` for PKNAME lookup with pipes and `head -n1`.
+  - Avoid passing `warn` to `ansible.builtin.command` (unsupported in 2.14), preventing errors like "Unsupported parameters for (ansible.legacy.command) module: warn".
+- Documentation: Note updated defaults and behavior in internal notes.
