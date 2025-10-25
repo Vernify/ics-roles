@@ -27,3 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - Initial Release
 - `user_management` role with group/user management, SSH keys, and sudo configuration
 - Comprehensive documentation and examples
+
+## [2.0.0] - 2025-10-26
+
+- monitoring_proxy: Added support for deriving site FQDNs from `monitoring_proxy_domain` (defaults to `ansible_domain`); assertion if missing when `server_name` not provided.
+- monitoring_proxy: `monitoring_proxy_network` now defaults to `monitoring_common_network_name` when available.
+- monitoring_common: Ensures Docker network exists via `monitoring_common_network_name` (unchanged default `monitoring`).
+- New role: `storage_grow_pv` to rescan block devices, grow partitions with `growpart`, and `pvresize` when a disk has a single PV; skips multi-PV disks.
+- Defaults: Improved cross-org defaults; domains are no longer hardcoded in roles.

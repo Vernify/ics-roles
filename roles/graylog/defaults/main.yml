@@ -1,7 +1,7 @@
 ---
 # Defaults for graylog role
 
-graylog_network: "monitoring"
+graylog_network: "{{ monitoring_common_network_name | default('monitoring') }}"
 
 # Images
 graylog_image: graylog/graylog:6.3.5

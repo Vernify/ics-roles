@@ -2,7 +2,7 @@
 # Defaults for grafana role
 
 grafana_image: "grafana/grafana:10.4.5"
-grafana_network: "monitoring"
+grafana_network: "{{ monitoring_common_network_name | default('monitoring') }}"
 
 grafana_container_name: "grafana"
 

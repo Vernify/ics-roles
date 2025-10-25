@@ -1,4 +1,4 @@
-# Multi-Environment Setup Guide
+# Multi-Environment Setup Guide (deprecated)
 
 This guide demonstrates how to set up the ICS Ansible Collection for multi-environment deployments across development, staging, and production environments.
 

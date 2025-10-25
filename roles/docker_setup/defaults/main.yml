@@ -10,7 +10,7 @@ docker_setup_repo_channel: stable
 
 # Optional data-root path for Docker (e.g., /opt/docker_volumes/docker-data)
 # If empty, daemon.json will not be managed by this role
-docker_setup_data_root: ""
+docker_setup_data_root: "/opt/docker_volumes/docker-data"
 
 # Additional daemon config to merge into daemon.json (dict)
 docker_setup_daemon_extra: {}

@@ -1,10 +1,16 @@
-# Default server block for unmatched requests
+# Default server block for unmatched requests (portable, no hardcoded domains)
+{% set _urls = [] %}
+{% for s in monitoring_proxy_sites %}
+  {% set fqdn = s.server_name | default(s.name ~ '.' ~ monitoring_proxy_domain) %}
+  {% set _ = _urls.append('- http://' ~ fqdn) %}
+{% endfor %}
+
 server {
     listen 80 default_server;
     server_name _;
 
     location / {
-        return 404 "Service not found. Available services:\n- http://grafana.iotel.io\n- http://graphite.iotel.io\n- http://graylog.iotel.io\n";
+        return 404 "Service not found. Available services:\n{{ _urls | join('\n') }}\n";
         add_header Content-Type text/plain;
     }
 }

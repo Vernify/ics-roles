@@ -2,7 +2,7 @@
 # Defaults for monitoring_proxy (Nginx reverse proxy for monitoring stack)
 
 monitoring_proxy_image: "nginx:1.25-alpine"
-monitoring_proxy_network: "monitoring"
+monitoring_proxy_network: "{{ monitoring_common_network_name | default('monitoring') }}"
 monitoring_proxy_container_name: "monitoring-proxy"
 
 monitoring_proxy_volumes_root: "/opt/docker_volumes/monitoring-proxy"
@@ -28,3 +28,8 @@ monitoring_proxy_tls_enabled: false
 monitoring_proxy_sites: []
 
 monitoring_proxy_restart_policy: always
+
+# Optional domain to use when a site's server_name isn't specified.
+# Defaults to the host's discovered domain (ansible_domain). If empty and a site
+# omits server_name, an assertion will fail in the role tasks.
+monitoring_proxy_domain: "{{ ansible_domain | default('') }}"

@@ -4,7 +4,7 @@
 graphite_image: "graphiteapp/graphite-statsd:latest"
 
 # Network to join
-graphite_network: "monitoring"
+graphite_network: "{{ monitoring_common_network_name | default('monitoring') }}"
 
 # Host volume root
 graphite_volumes_root: "/opt/docker_volumes/graphite"

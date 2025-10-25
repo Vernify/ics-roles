@@ -1,5 +1,6 @@
 # Managed by Ansible - site: {{ monitoring_proxy_site_item.name }}
 {% set site_tls = (monitoring_proxy_site_item.tls | default(monitoring_proxy_tls_enabled)) %}
+{% set site_server_name = monitoring_proxy_site_item.server_name | default(monitoring_proxy_site_item.name ~ '.' ~ monitoring_proxy_domain) %}
 
 upstream {{ monitoring_proxy_site_item.name }}_upstream {
     server {{ monitoring_proxy_site_item.upstream.host }}:{{ monitoring_proxy_site_item.upstream.port }};
@@ -7,7 +8,7 @@ upstream {{ monitoring_proxy_site_item.name }}_upstream {
 
 server {
     listen 80;
-    server_name {{ monitoring_proxy_site_item.server_name }};
+    server_name {{ site_server_name }};
 
     {% if site_tls %}
     # Enforce HTTPS
@@ -26,10 +27,10 @@ server {
 {% if site_tls %}
 server {
     listen 443 ssl;
-    server_name {{ monitoring_proxy_site_item.server_name }};
+    server_name {{ site_server_name }};
 
-    ssl_certificate     /etc/nginx/certs/{{ monitoring_proxy_site_item.server_name }}/fullchain.pem;
-    ssl_certificate_key /etc/nginx/certs/{{ monitoring_proxy_site_item.server_name }}/privkey.pem;
+    ssl_certificate     /etc/nginx/certs/{{ site_server_name }}/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/{{ site_server_name }}/privkey.pem;
 
     location / {
         proxy_pass http://{{ monitoring_proxy_site_item.name }}_upstream;
