@@ -85,11 +85,13 @@
   register: storage_grow_pv_growpart
   changed_when: "'NOCHANGE' not in (storage_grow_pv_growpart.stdout | default(''))"
   failed_when: false
-  loop: "{{ storage_grow_pv_grouped | selectattr('1', 'length', '==', 1) | list }}"
+  loop: "{{ storage_grow_pv_grouped }}"
   loop_control:
     loop_var: storage_grow_pv_group
     label: "{{ '/dev/' ~ storage_grow_pv_group.0 }}:{{ (storage_grow_pv_group.1[0].partnum | trim) }}"
-  when: (storage_grow_pv_group.1[0].partnum | trim) | length > 0
+  when:
+    - (storage_grow_pv_group.1 | length) == 1
+    - (storage_grow_pv_group.1[0].partnum | trim | length) > 0
   tags: "{{ storage_grow_pv_tags }}"
 
 - name: pvresize for single-PV disks
@@ -97,10 +99,12 @@
   register: storage_grow_pv_pvresize
   changed_when: "'resized' in (storage_grow_pv_pvresize.stdout | default('')) or (storage_grow_pv_pvresize.rc == 0)"
   failed_when: false
-  loop: "{{ storage_grow_pv_grouped | selectattr('1', 'length', '==', 1) | list }}"
+  loop: "{{ storage_grow_pv_grouped }}"
   loop_control:
     loop_var: storage_grow_pv_group
     label: "{{ storage_grow_pv_group.1[0].pv }}"
+  when:
+    - (storage_grow_pv_group.1 | length) == 1
   tags: "{{ storage_grow_pv_tags }}"
 
 - name: Debug summary
