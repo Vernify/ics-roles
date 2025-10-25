@@ -13,6 +13,12 @@
     state: present
   tags: "{{ storage_grow_pv_tags }}"
 
+- name: Ensure lsblk is available (util-linux)
+  ansible.builtin.package:
+    name: util-linux
+    state: present
+  tags: "{{ storage_grow_pv_tags }}"
+
 - name: Discover PV devices when not provided
   ansible.builtin.command: pvs --noheadings -o pv_name
   register: storage_grow_pv_pvs_cmd
@@ -33,7 +39,9 @@
   tags: "{{ storage_grow_pv_tags }}"
 
 - name: Collect parent disk (PKNAME) for each PV
-  ansible.builtin.command: "lsblk -no PKNAME {{ storage_grow_pv_dev }}"
+  ansible.builtin.shell: "set -o pipefail; lsblk -no PKNAME {{ storage_grow_pv_dev }} | head -n1"
+  args:
+    warn: false
   register: storage_grow_pv_pkname_one
   changed_when: false
   loop: "{{ storage_grow_pv_devices_effective }}"
@@ -41,10 +49,10 @@
     loop_var: storage_grow_pv_dev
   tags: "{{ storage_grow_pv_tags }}"
 
-- name: Collect partition number for each PV
-  ansible.builtin.command: "lsblk -no PARTNUM {{ storage_grow_pv_dev }}"
-  register: storage_grow_pv_partnum_one
-  changed_when: false
+# Note: Some util-linux versions don't support PARTNUM. Extract part number from the PV device path.
+- name: Derive partition numbers from PV device names
+  ansible.builtin.set_fact:
+    storage_grow_pv_partnums: "{{ (storage_grow_pv_partnums | default({})) | combine({storage_grow_pv_dev: (storage_grow_pv_dev | regex_search('([0-9]+)$') | default(''))}) }}"
   loop: "{{ storage_grow_pv_devices_effective }}"
   loop_control:
     loop_var: storage_grow_pv_dev
@@ -52,11 +60,11 @@
 
 - name: Merge collected info into metadata list
   ansible.builtin.set_fact:
-    storage_grow_pv_meta: '{{ storage_grow_pv_meta + [ { "pv": storage_grow_pv_tuple.0.0, "disk": (storage_grow_pv_tuple.0.1.stdout | trim), "disk_path": "/dev/" ~ (storage_grow_pv_tuple.0.1.stdout | trim), "partnum": (storage_grow_pv_tuple.1.stdout | trim) } ] }}'
-  loop: "{{ storage_grow_pv_devices_effective | zip(storage_grow_pv_pkname_one.results) | zip(storage_grow_pv_partnum_one.results) | list }}"
+    storage_grow_pv_meta: '{{ storage_grow_pv_meta + [ { "pv": storage_grow_pv_tuple.0, "disk": (storage_grow_pv_tuple.1.stdout | trim), "disk_path": "/dev/" ~ (storage_grow_pv_tuple.1.stdout | trim), "partnum": (storage_grow_pv_partnums[storage_grow_pv_tuple.0] | default("") | string) } ] }}'
+  loop: "{{ storage_grow_pv_devices_effective | zip(storage_grow_pv_pkname_one.results) | list }}"
   loop_control:
     loop_var: storage_grow_pv_tuple
-    label: "{{ storage_grow_pv_tuple.0.0 }}"
+    label: "{{ storage_grow_pv_tuple.0 }}"
   tags: "{{ storage_grow_pv_tags }}"
 
 - name: Group PVs by parent disk
@@ -85,6 +93,7 @@
   loop_control:
     loop_var: storage_grow_pv_group
     label: "{{ '/dev/' ~ storage_grow_pv_group.0 }}:{{ (storage_grow_pv_group.1[0].partnum | trim) }}"
+  when: (storage_grow_pv_group.1[0].partnum | trim) | length > 0
   tags: "{{ storage_grow_pv_tags }}"
 
 - name: pvresize for single-PV disks

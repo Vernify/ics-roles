@@ -14,5 +14,6 @@ monitoring_common_named_volumes: []
 # Whether to ensure Docker engine is present (best effort)
 monitoring_common_manage_docker: false
 
-# Additional sysctl settings to apply (e.g., vm.max_map_count for OpenSearch)
-monitoring_common_sysctl: {}
+# Additional sysctl settings to apply. Includes required setting for OpenSearch by default.
+monitoring_common_sysctl:
+  vm.max_map_count: "262144"
