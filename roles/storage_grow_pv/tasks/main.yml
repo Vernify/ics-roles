@@ -39,7 +39,7 @@
   tags: "{{ storage_grow_pv_tags }}"
 
 - name: Collect parent disk (PKNAME) for each PV
-  ansible.builtin.shell: "set -o pipefail; lsblk -no PKNAME {{ storage_grow_pv_dev }} | head -n1"
+  ansible.builtin.command: lsblk -no PKNAME {{ storage_grow_pv_dev }}
   register: storage_grow_pv_pkname_one
   changed_when: false
   loop: "{{ storage_grow_pv_devices_effective }}"
@@ -58,7 +58,7 @@
 
 - name: Merge collected info into metadata list
   ansible.builtin.set_fact:
-    storage_grow_pv_meta: '{{ storage_grow_pv_meta + [ { "pv": storage_grow_pv_tuple.0, "disk": (storage_grow_pv_tuple.1.stdout | trim), "disk_path": "/dev/" ~ (storage_grow_pv_tuple.1.stdout | trim), "partnum": (storage_grow_pv_partnums[storage_grow_pv_tuple.0] | default("") | string) } ] }}'
+    storage_grow_pv_meta: '{{ storage_grow_pv_meta + [ { "pv": storage_grow_pv_tuple.0, "disk": ((storage_grow_pv_tuple.1.stdout_lines | default([])) | first | default("") | trim), "disk_path": "/dev/" ~ (((storage_grow_pv_tuple.1.stdout_lines | default([])) | first | default("") | trim)), "partnum": (storage_grow_pv_partnums[storage_grow_pv_tuple.0] | default("") | string) } ] }}'
   loop: "{{ storage_grow_pv_devices_effective | zip(storage_grow_pv_pkname_one.results) | list }}"
   loop_control:
     loop_var: storage_grow_pv_tuple
