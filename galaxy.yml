@@ -1,11 +1,9 @@
 namespace: ics
 name: common
-version: 2.0.1
+version: 2.0.0
 readme: README.md
-
 authors:
   - ICS Infrastructure Team
-
 description: >-
   ICS Common Ansible Collection providing reusable infrastructure automation
   components for multi-customer environments with standardized security,

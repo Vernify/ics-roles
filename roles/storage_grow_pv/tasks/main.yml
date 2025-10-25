@@ -40,8 +40,6 @@
 
 - name: Collect parent disk (PKNAME) for each PV
   ansible.builtin.shell: "set -o pipefail; lsblk -no PKNAME {{ storage_grow_pv_dev }} | head -n1"
-  args:
-    warn: false
   register: storage_grow_pv_pkname_one
   changed_when: false
   loop: "{{ storage_grow_pv_devices_effective }}"
@@ -74,8 +72,6 @@
 
 - name: Rescan parent disks (always)
   ansible.builtin.shell: "echo 1 > /sys/class/block/{{ storage_grow_pv_group.0 }}/device/rescan"
-  args:
-    warn: false
   loop: "{{ storage_grow_pv_grouped }}"
   loop_control:
     loop_var: storage_grow_pv_group
