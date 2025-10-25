@@ -40,7 +40,6 @@
         - "{{ graylog_opensearch_volume }}"
       loop_control:
         loop_var: graylog_volume_item
-  failed_when: false
 
     - name: Wipe host data directories
       ansible.builtin.file:
@@ -53,7 +52,6 @@
         - "{{ graylog_volumes_root }}/opensearch/data"
       loop_control:
         loop_var: graylog_data_dir_item
-  failed_when: false
 
 - name: Assert Graylog secrets are provided
   ansible.builtin.assert:
