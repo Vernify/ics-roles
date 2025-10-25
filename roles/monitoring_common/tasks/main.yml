@@ -1,0 +1,152 @@
+---
+# Prepare host for monitoring stack: directories, sysctl, docker network and named volumes
+
+- name: Ensure required packages for Docker SDK usage are present (python3, pip)
+  ansible.builtin.package:
+    name: ["python3", "python3-pip"]
+    state: present
+  when: monitoring_common_manage_docker | bool
+  tags: [monitoring, monitoring_common]
+
+- name: Install prerequisites for Docker installation
+  ansible.builtin.package:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+  when: monitoring_common_manage_docker | bool
+  tags: [monitoring, monitoring_common]
+
+- name: Create directory for Docker GPG key
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  when: monitoring_common_manage_docker | bool
+  tags: [monitoring, monitoring_common]
+
+- name: Add Docker's official GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+  when: monitoring_common_manage_docker | bool
+  tags: [monitoring, monitoring_common]
+
+- name: Set correct permissions on Docker GPG key
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+  when: monitoring_common_manage_docker | bool
+  tags: [monitoring, monitoring_common]
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+    state: present
+    filename: docker
+  when: monitoring_common_manage_docker | bool
+  tags: [monitoring, monitoring_common]
+
+- name: Update apt cache after adding Docker repository
+  ansible.builtin.apt:
+    update_cache: true
+  when: monitoring_common_manage_docker | bool
+  tags: [monitoring, monitoring_common]
+
+- name: Install Docker packages
+  ansible.builtin.package:
+    name: docker.io
+    state: present
+  when: monitoring_common_manage_docker | bool
+  tags: [monitoring, monitoring_common]
+
+- name: Ensure docker service is running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  when: monitoring_common_manage_docker | bool
+  tags: [monitoring, monitoring_common]
+
+- name: Apply sysctl settings required for monitoring stack
+  ansible.posix.sysctl:
+    name: "{{ monitoring_common_sysctl_item.key }}"
+    value: "{{ monitoring_common_sysctl_item.value }}"
+    state: present
+    reload: true
+  loop: "{{ monitoring_common_sysctl | dict2items }}"
+  loop_control:
+    loop_var: monitoring_common_sysctl_item
+  when: monitoring_common_sysctl | length > 0
+  tags: [monitoring, monitoring_common]
+
+- name: Create root volumes directory
+  ansible.builtin.file:
+    path: "{{ monitoring_common_volumes_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [monitoring, monitoring_common]
+
+- name: Create host directories for named volumes
+  ansible.builtin.file:
+    path: "{{ monitoring_common_volume_item.host_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+    recurse: true
+  loop: "{{ monitoring_common_named_volumes }}"
+  loop_control:
+    label: "{{ monitoring_common_volume_item.host_path }}"
+    loop_var: monitoring_common_volume_item
+  tags: [monitoring, monitoring_common]
+
+- name: Ensure monitoring docker network exists
+  community.docker.docker_network:
+    name: "{{ monitoring_common_network_name }}"
+    state: present
+  tags: [monitoring, monitoring_common]
+
+- name: Create named docker volumes bound to host paths
+  community.docker.docker_volume:
+    name: "{{ monitoring_common_volume_item.name }}"
+    state: present
+    driver: local
+    driver_options:
+      o: bind
+      type: none
+      device: "{{ monitoring_common_volume_item.host_path }}"
+  loop: "{{ monitoring_common_named_volumes }}"
+  loop_control:
+    label: "{{ monitoring_common_volume_item.name }} -> {{ monitoring_common_volume_item.host_path }}"
+    loop_var: monitoring_common_volume_item
+  tags: [monitoring, monitoring_common]
+
+- name: Create Docker data directory on LVM volume
+  ansible.builtin.file:
+    path: /opt/docker_volumes/docker-data
+    state: directory
+    owner: root
+    group: root
+    mode: '0711'
+  when: monitoring_common_manage_docker | bool
+  tags: [monitoring, monitoring_common]
+
+- name: Configure Docker daemon data-root
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "data-root": "/opt/docker_volumes/docker-data"
+      }
+    mode: '0644'
+  when: monitoring_common_manage_docker | bool
+  notify: [Restart Docker]
+  tags: [monitoring, monitoring_common]

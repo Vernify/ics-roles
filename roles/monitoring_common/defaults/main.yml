@@ -1,0 +1,18 @@
+---
+# Defaults for monitoring_common role
+
+# Root directory for all persistent docker volumes
+monitoring_common_volumes_root: "/opt/docker_volumes"
+
+# Docker network name for the monitoring stack
+monitoring_common_network_name: "monitoring"
+
+# Named volumes and their host paths to bind
+# Each item: { name: <docker_volume_name>, host_path: <absolute host dir> }
+monitoring_common_named_volumes: []
+
+# Whether to ensure Docker engine is present (best effort)
+monitoring_common_manage_docker: false
+
+# Additional sysctl settings to apply (e.g., vm.max_map_count for OpenSearch)
+monitoring_common_sysctl: {}

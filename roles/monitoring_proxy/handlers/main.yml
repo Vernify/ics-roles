@@ -1,0 +1,6 @@
+---
+- name: Restart Monitoring Proxy
+  community.docker.docker_container:
+    name: "{{ monitoring_proxy_container_name }}"
+    restart: true
+  listen: "restart monitoring proxy"

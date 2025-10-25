@@ -1,0 +1,42 @@
+# Managed by Ansible - site: {{ monitoring_proxy_site_item.name }}
+{% set site_tls = (monitoring_proxy_site_item.tls | default(monitoring_proxy_tls_enabled)) %}
+
+upstream {{ monitoring_proxy_site_item.name }}_upstream {
+    server {{ monitoring_proxy_site_item.upstream.host }}:{{ monitoring_proxy_site_item.upstream.port }};
+}
+
+server {
+    listen 80;
+    server_name {{ monitoring_proxy_site_item.server_name }};
+
+    {% if site_tls %}
+    # Enforce HTTPS
+    return 301 https://$host$request_uri;
+    {% else %}
+    location / {
+        proxy_pass http://{{ monitoring_proxy_site_item.name }}_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    {% endif %}
+}
+
+{% if site_tls %}
+server {
+    listen 443 ssl;
+    server_name {{ monitoring_proxy_site_item.server_name }};
+
+    ssl_certificate     /etc/nginx/certs/{{ monitoring_proxy_site_item.server_name }}/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/{{ monitoring_proxy_site_item.server_name }}/privkey.pem;
+
+    location / {
+        proxy_pass http://{{ monitoring_proxy_site_item.name }}_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+{% endif %}

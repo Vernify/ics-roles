@@ -1,0 +1,10 @@
+# Default server block for unmatched requests
+server {
+    listen 80 default_server;
+    server_name _;
+
+    location / {
+        return 404 "Service not found. Available services:\n- http://grafana.iotel.io\n- http://graphite.iotel.io\n- http://graylog.iotel.io\n";
+        add_header Content-Type text/plain;
+    }
+}

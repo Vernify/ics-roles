@@ -1,0 +1,53 @@
+---
+# Deploy Grafana with persistent storage
+
+- name: Ensure Grafana host directories exist
+  ansible.builtin.file:
+    path: "{{ grafana_item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+    recurse: true
+  loop:
+    - "{{ grafana_volumes_root }}/data"
+    - "{{ grafana_volumes_root }}/provisioning"
+  loop_control:
+    loop_var: grafana_item
+  tags: [monitoring, grafana]
+
+- name: Create Grafana named volumes bound to host paths
+  community.docker.docker_volume:
+    name: "{{ grafana_volume_item.name }}"
+    state: present
+    driver: local
+    driver_options:
+      o: bind
+      type: none
+      device: "{{ grafana_volume_item.host_path }}"
+  loop:
+    - { name: "{{ grafana_data_volume }}", host_path: "{{ grafana_volumes_root }}/data" }
+    - { name: "{{ grafana_provisioning_volume }}", host_path: "{{ grafana_volumes_root }}/provisioning" }
+  loop_control:
+    label: "{{ grafana_volume_item.name }} -> {{ grafana_volume_item.host_path }}"
+    loop_var: grafana_volume_item
+  tags: [monitoring, grafana]
+
+- name: Ensure Grafana container is running
+  community.docker.docker_container:
+    name: "{{ grafana_container_name }}"
+    image: "{{ grafana_image }}"
+    restart_policy: "{{ grafana_restart_policy }}"
+    networks:
+      - name: "{{ grafana_network }}"
+    published_ports: "{{ grafana_published_ports }}"
+    env: "{{ grafana_env }}"
+    volumes:
+      - "{{ grafana_data_volume }}:/var/lib/grafana"
+      - "{{ grafana_provisioning_volume }}:/etc/grafana/provisioning"
+    state: started
+    restart: true
+    pull: true
+  tags: [monitoring, grafana]
+  notify:
+    - Restart Grafana

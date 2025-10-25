@@ -1,0 +1,55 @@
+---
+# Defaults for graylog role
+
+graylog_network: "monitoring"
+
+# Images
+graylog_image: graylog/graylog:6.3.5
+graylog_mongo_image: "mongo:6.0"
+graylog_opensearch_image: "opensearchproject/opensearch:2.11.1"
+
+# Container names
+graylog_container_name: "graylog"
+graylog_mongo_container_name: "graylog-mongo"
+graylog_opensearch_container_name: "graylog-opensearch"
+
+# Volumes (named) and their host roots
+graylog_volumes_root: "/opt/docker_volumes/graylog"
+graylog_mongo_volume: "graylog_mongo_data"
+graylog_opensearch_volume: "graylog_opensearch_data"
+graylog_data_volume: "graylog_data"
+graylog_journal_volume: "graylog_journal"
+
+# Ports to publish
+graylog_published_ports:
+  - "9000:9000"
+  - "1514:1514/tcp"
+  - "1514:1514/udp"
+  - "12201:12201/udp"
+
+# Graylog secrets (use Vault)
+graylog_password_secret: ""
+graylog_root_password_sha2: ""
+
+# Opensearch JVM options
+graylog_opensearch_java_opts: "-Xms1g -Xmx1g"
+
+# Restart policies
+graylog_restart_policy: always
+graylog_mongo_restart_policy: always
+graylog_opensearch_restart_policy: always
+
+# Graylog container user
+graylog_user_id: 1100
+graylog_group_id: 1100
+
+# HTTP settings
+graylog_http_bind: "0.0.0.0:9000"
+graylog_http_publish_uri: "http://{{ graylog_container_name }}:9000/"
+
+# Optionally wipe Graylog, OpenSearch, and Mongo data to start fresh
+graylog_reset_data: false
+
+# OpenSearch container user/group ids
+graylog_opensearch_user_id: 1000
+graylog_opensearch_group_id: 1000

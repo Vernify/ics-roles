@@ -1,0 +1,42 @@
+---
+# Defaults for graphite role
+
+graphite_image: "graphiteapp/graphite-statsd:latest"
+
+# Network to join
+graphite_network: "monitoring"
+
+# Host volume root
+graphite_volumes_root: "/opt/docker_volumes/graphite"
+
+# Named volumes definitions (bound to host dirs)
+graphite_storage_volume: "graphite_storage"
+graphite_config_volume: "graphite_config"
+
+# Port publishing for ingestion; set to [] to disable
+# Default exposes common ports: 2003/tcp, 2004/tcp, 8125/udp, 8126/tcp, 80/tcp
+graphite_published_ports:
+  - "2003:2003"
+  - "2004:2004"
+  - "8125:8125/udp"
+  - "8126:8126"
+  - "8080:80"
+
+# Container name
+graphite_container_name: "graphite"
+
+# Environment variables
+graphite_env: {}
+
+# Restart policy
+graphite_restart_policy: always
+
+# Healthcheck configuration
+graphite_healthcheck:
+  test:
+    - CMD-SHELL
+    - "/opt/graphite/bin/python3 -c \"import urllib.request,sys; urllib.request.urlopen('http://localhost/', timeout=5); sys.exit(0)\" || exit 1"
+  interval: 30s
+  timeout: 5s
+  retries: 5
+  start_period: 30s

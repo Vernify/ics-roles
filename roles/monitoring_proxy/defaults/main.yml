@@ -1,0 +1,30 @@
+---
+# Defaults for monitoring_proxy (Nginx reverse proxy for monitoring stack)
+
+monitoring_proxy_image: "nginx:1.25-alpine"
+monitoring_proxy_network: "monitoring"
+monitoring_proxy_container_name: "monitoring-proxy"
+
+monitoring_proxy_volumes_root: "/opt/docker_volumes/monitoring-proxy"
+monitoring_proxy_conf_volume: "monitoring_proxy_conf"
+monitoring_proxy_certs_volume: "monitoring_proxy_certs"
+monitoring_proxy_logs_volume: "monitoring_proxy_logs"
+
+monitoring_proxy_published_ports:
+  - "80:80"
+  - "443:443"
+
+# TLS is optional; if disabled, only HTTP server blocks are created
+monitoring_proxy_tls_enabled: false
+
+# List of sites to proxy
+# Each item:
+# - name: short name for file
+#   server_name: FQDN
+#   upstream:
+#     host: container name on monitoring network
+#     port: container port
+#   tls: true|false (default uses monitoring_proxy_tls_enabled)
+monitoring_proxy_sites: []
+
+monitoring_proxy_restart_policy: always

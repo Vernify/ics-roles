@@ -1,0 +1,54 @@
+---
+# Deploy Graphite using graphiteapp/graphite-statsd
+
+- name: Ensure Graphite host directories exist
+  ansible.builtin.file:
+    path: "{{ graphite_item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+    recurse: true
+  loop:
+    - "{{ graphite_volumes_root }}/storage"
+    - "{{ graphite_volumes_root }}/config"
+  loop_control:
+    loop_var: graphite_item
+  tags: [monitoring, graphite]
+
+- name: Create Graphite named volumes bound to host paths
+  community.docker.docker_volume:
+    name: "{{ graphite_volume_item.name }}"
+    state: present
+    driver: local
+    driver_options:
+      o: bind
+      type: none
+      device: "{{ graphite_volume_item.host_path }}"
+  loop:
+    - { name: "{{ graphite_storage_volume }}", host_path: "{{ graphite_volumes_root }}/storage" }
+    - { name: "{{ graphite_config_volume }}", host_path: "{{ graphite_volumes_root }}/config" }
+  loop_control:
+    label: "{{ graphite_volume_item.name }} -> {{ graphite_volume_item.host_path }}"
+    loop_var: graphite_volume_item
+  tags: [monitoring, graphite]
+
+- name: Ensure Graphite container is running
+  community.docker.docker_container:
+    name: "{{ graphite_container_name }}"
+    image: "{{ graphite_image }}"
+    restart_policy: "{{ graphite_restart_policy }}"
+    networks:
+      - name: "{{ graphite_network }}"
+    published_ports: "{{ graphite_published_ports }}"
+    env: "{{ graphite_env }}"
+    healthcheck: "{{ graphite_healthcheck }}"
+    volumes:
+      - "{{ graphite_storage_volume }}:/opt/graphite/storage"
+      - "{{ graphite_config_volume }}:/opt/graphite/conf"
+    state: started
+    restart: true
+    pull: true
+  tags: [monitoring, graphite]
+  notify:
+    - Restart Graphite

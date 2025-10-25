@@ -1,0 +1,6 @@
+---
+- name: Restart Graphite
+  community.docker.docker_container:
+    name: "{{ graphite_container_name }}"
+    restart: true
+  listen: "restart graphite"
