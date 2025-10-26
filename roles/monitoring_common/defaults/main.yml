@@ -12,7 +12,13 @@ monitoring_common_network_name: "monitoring"
 monitoring_common_named_volumes: []
 
 # Whether to ensure Docker engine is present (best effort)
-monitoring_common_manage_docker: false
+monitoring_common_manage_docker: true
+
+# Note: automated Docker installation in this role currently supports Debian/Ubuntu
+# (apt-based) hosts. The role will only attempt to install/start Docker when the
+# host reports an Ansible `ansible_os_family` of 'Debian'. For other platforms,
+# set `monitoring_common_manage_docker: false` and manage Docker via your distro
+# specific role or provisioning pipeline.
 
 # Additional sysctl settings to apply. Includes required setting for OpenSearch by default.
 monitoring_common_sysctl:
