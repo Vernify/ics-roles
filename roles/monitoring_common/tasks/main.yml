@@ -34,11 +34,10 @@
   when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
   tags: [monitoring, monitoring_common]
 
-- name: Add Docker's official GPG key
-  ansible.builtin.get_url:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    dest: /etc/apt/keyrings/docker.asc
-    mode: '0644'
+- name: Download Docker's official GPG key with curl (workaround for HTTPS module issues)
+  ansible.builtin.command:
+    cmd: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc"
+    creates: /etc/apt/keyrings/docker.asc
   when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
   tags: [monitoring, monitoring_common]
 
@@ -52,7 +51,7 @@
 - name: Add Docker repository
   ansible.builtin.apt_repository:
     repo: >-
-      deb [arch={{ ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc]
+      deb [arch={{ 'amd64' if ansible_architecture in ['x86_64','amd64'] else 'arm64' if ansible_architecture in ['aarch64','arm64'] else ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc]
       https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
     state: present
     filename: docker
