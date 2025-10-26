@@ -29,14 +29,14 @@
   tags: [monitoring, monitoring_common, storage]
 
 - name: Create filesystem on Docker logical volume (idempotent)
-  ansible.builtin.filesystem:
+  ansible.builtin.filesystem:  # noqa: fqcn
     fstype: "{{ monitoring_common_docker_fs_type }}"
     dev: "/dev/mapper/{{ monitoring_common_docker_vg }}-{{ monitoring_common_docker_lv }}"
   when: monitoring_common_prepare_docker_disk | bool and ansible_os_family == 'Debian'
   tags: [monitoring, monitoring_common, storage]
 
-- name: Mount Docker volume at {{ monitoring_common_docker_mountpoint }} and persist in fstab
-  ansible.builtin.mount:
+- name: Mount Docker volume and persist in fstab at {{ monitoring_common_docker_mountpoint }}
+  ansible.builtin.mount:  # noqa: fqcn
     path: "{{ monitoring_common_docker_mountpoint }}"
     src: "/dev/mapper/{{ monitoring_common_docker_vg }}-{{ monitoring_common_docker_lv }}"
     fstype: "{{ monitoring_common_docker_fs_type }}"
@@ -79,7 +79,7 @@
 
 - name: Download Docker's official GPG key with curl (workaround for HTTPS module issues)
   ansible.builtin.command:
-    cmd: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc"
+    cmd: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc"  # noqa: command-instead-of-module
     creates: /etc/apt/keyrings/docker.asc
   when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
   tags: [monitoring, monitoring_common]
@@ -94,7 +94,7 @@
 - name: Add Docker repository
   ansible.builtin.apt_repository:
     repo: >-
-      deb [arch={{ 'amd64' if ansible_architecture in ['x86_64','amd64'] else 'arm64' if ansible_architecture in ['aarch64','arm64'] else ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc]
+      deb [arch={{ 'amd64' if ansible_architecture in ['x86_64', 'amd64'] else 'arm64' if ansible_architecture in ['aarch64', 'arm64'] else ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc]
       https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
     state: present
     filename: docker
@@ -204,8 +204,6 @@
     label: "{{ monitoring_common_volume_item.name }} -> {{ monitoring_common_volume_item.host_path }}"
     loop_var: monitoring_common_volume_item
   tags: [monitoring, monitoring_common]
-
-
 
 - name: Warn when automatic Docker management is enabled on unsupported platforms
   ansible.builtin.debug:
