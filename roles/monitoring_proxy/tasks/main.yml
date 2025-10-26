@@ -49,11 +49,10 @@
 - name: Assert domain is available when server_name is omitted
   ansible.builtin.assert:
     that:
-      - (monitoring_proxy_sites | selectattr('server_name', 'defined') | list | length) == (monitoring_proxy_sites | length)
       - monitoring_proxy_domain | length > 0
     fail_msg: >-
-      monitoring_proxy: A site is missing 'server_name' and 'monitoring_proxy_domain' is empty.
-      Either provide 'server_name' per site or set 'monitoring_proxy_domain' (defaults to ansible_domain).
+      monitoring_proxy: 'monitoring_proxy_domain' is empty.
+      Set 'monitoring_proxy_domain' (defaults to ansible_domain).
   when: monitoring_proxy_sites | selectattr('server_name', 'undefined') | list | length > 0
   tags: [monitoring, monitoring_proxy]
 
