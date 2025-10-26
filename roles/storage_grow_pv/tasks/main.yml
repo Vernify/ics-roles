@@ -112,5 +112,5 @@
     msg: |
       storage_grow_pv summary:
       - Considered PVs: {{ storage_grow_pv_devices_effective | default(storage_grow_pv_devices) }}
-      - Single-PV disks: {{ (storage_grow_pv_grouped | selectattr('1', 'length', '==', 1) | list) | map('first') | list }}
+      - Grouped by parent disk: {{ storage_grow_pv_grouped | map('first') | list }}
   tags: "{{ storage_grow_pv_tags }}"
