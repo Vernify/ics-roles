@@ -1,0 +1,6 @@
+---
+- name: Restart Graylog
+  community.docker.docker_container:
+    name: "{{ graylog_container_name }}"
+    restart: true
+  listen: "restart graylog"

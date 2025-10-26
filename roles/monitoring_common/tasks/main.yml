@@ -1,0 +1,216 @@
+---
+# Prepare host for monitoring stack: directories, sysctl, docker network and named volumes
+
+- name: Ensure mountpoint for Docker volumes exists (pre-disk-setup)
+  ansible.builtin.file:
+    path: "{{ monitoring_common_docker_mountpoint }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: monitoring_common_prepare_docker_disk | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common, storage]
+
+- name: Create LVM volume group for Docker (will pvcreate if needed)
+  community.general.lvg:
+    vg: "{{ monitoring_common_docker_vg }}"
+    pvs:
+      - "{{ monitoring_common_docker_device }}"
+  when: monitoring_common_prepare_docker_disk | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common, storage]
+
+- name: Create logical volume for Docker data
+  community.general.lvol:
+    vg: "{{ monitoring_common_docker_vg }}"
+    lv: "{{ monitoring_common_docker_lv }}"
+    size: 100%FREE
+    state: present
+  when: monitoring_common_prepare_docker_disk | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common, storage]
+
+- name: Create filesystem on Docker logical volume (idempotent)
+  ansible.builtin.filesystem:  # noqa: fqcn
+    fstype: "{{ monitoring_common_docker_fs_type }}"
+    dev: "/dev/mapper/{{ monitoring_common_docker_vg }}-{{ monitoring_common_docker_lv }}"
+  when: monitoring_common_prepare_docker_disk | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common, storage]
+
+- name: Mount Docker volume and persist in fstab at {{ monitoring_common_docker_mountpoint }}
+  ansible.builtin.mount:  # noqa: fqcn
+    path: "{{ monitoring_common_docker_mountpoint }}"
+    src: "/dev/mapper/{{ monitoring_common_docker_vg }}-{{ monitoring_common_docker_lv }}"
+    fstype: "{{ monitoring_common_docker_fs_type }}"
+    state: mounted
+  when: monitoring_common_prepare_docker_disk | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common, storage]
+
+- name: Ensure required packages for Docker SDK usage are present (python3, pip)
+  ansible.builtin.package:
+    name: ["python3", "python3-pip"]
+    state: present
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Install Docker Python SDK (python3-docker) for community.docker modules
+  ansible.builtin.package:
+    name: python3-docker
+    state: present
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Install prerequisites for Docker installation
+  ansible.builtin.package:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Create directory for Docker GPG key
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Download Docker's official GPG key with curl (workaround for HTTPS module issues)
+  ansible.builtin.command:
+    cmd: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc"  # noqa: command-instead-of-module
+    creates: /etc/apt/keyrings/docker.asc
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Set correct permissions on Docker GPG key
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ 'amd64' if ansible_architecture in ['x86_64', 'amd64'] else 'arm64' if ansible_architecture in ['aarch64', 'arm64'] else ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+    state: present
+    filename: docker
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Update apt cache after adding Docker repository
+  ansible.builtin.apt:
+    update_cache: true
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Install Docker packages
+  ansible.builtin.package:
+    name: docker.io
+    state: present
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Create Docker data directory on LVM volume
+  ansible.builtin.file:
+    path: /opt/docker_volumes/docker-data
+    state: directory
+    owner: root
+    group: root
+    mode: '0711'
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Configure Docker daemon data-root
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "data-root": "/opt/docker_volumes/docker-data"
+      }
+    mode: '0644'
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  notify: [Restart Docker]
+  tags: [monitoring, monitoring_common]
+
+- name: Restart Docker now to apply new data-root
+  ansible.builtin.meta: flush_handlers
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Ensure docker service is running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  when: monitoring_common_manage_docker | bool and ansible_os_family == 'Debian'
+  tags: [monitoring, monitoring_common]
+
+- name: Apply sysctl settings required for monitoring stack
+  ansible.posix.sysctl:
+    name: "{{ monitoring_common_sysctl_item.key }}"
+    value: "{{ monitoring_common_sysctl_item.value }}"
+    state: present
+    reload: true
+  loop: "{{ monitoring_common_sysctl | dict2items }}"
+  loop_control:
+    loop_var: monitoring_common_sysctl_item
+  when: monitoring_common_sysctl | length > 0
+  tags: [monitoring, monitoring_common]
+
+- name: Create root volumes directory
+  ansible.builtin.file:
+    path: "{{ monitoring_common_volumes_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [monitoring, monitoring_common]
+
+- name: Create host directories for named volumes
+  ansible.builtin.file:
+    path: "{{ monitoring_common_volume_item.host_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+    recurse: true
+  loop: "{{ monitoring_common_named_volumes }}"
+  loop_control:
+    label: "{{ monitoring_common_volume_item.host_path }}"
+    loop_var: monitoring_common_volume_item
+  tags: [monitoring, monitoring_common]
+
+- name: Ensure monitoring docker network exists
+  community.docker.docker_network:
+    name: "{{ monitoring_common_network_name }}"
+    state: present
+  tags: [monitoring, monitoring_common]
+
+- name: Create named docker volumes bound to host paths
+  community.docker.docker_volume:
+    name: "{{ monitoring_common_volume_item.name }}"
+    state: present
+    driver: local
+    driver_options:
+      o: bind
+      type: none
+      device: "{{ monitoring_common_volume_item.host_path }}"
+  loop: "{{ monitoring_common_named_volumes }}"
+  loop_control:
+    label: "{{ monitoring_common_volume_item.name }} -> {{ monitoring_common_volume_item.host_path }}"
+    loop_var: monitoring_common_volume_item
+  tags: [monitoring, monitoring_common]
+
+- name: Warn when automatic Docker management is enabled on unsupported platforms
+  ansible.builtin.debug:
+    msg: |
+      monitoring_common_manage_docker is true but this role's automated Docker
+      installation only supports Debian-family hosts (apt). Skipping install
+      steps on this host. Please manage Docker via your distro-specific
+      provisioning or set monitoring_common_manage_docker: false.
+  when: monitoring_common_manage_docker | bool and ansible_os_family != 'Debian'
+  tags: [monitoring, monitoring_common]

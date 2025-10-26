@@ -1,0 +1,204 @@
+---
+# Deploy Graylog stack: MongoDB, OpenSearch, and Graylog
+
+- name: "Reset Graylog data and volumes (DANGEROUS: destroys data)"
+  when: graylog_reset_data | bool
+  tags: [monitoring, graylog, reset]
+  block:
+    - name: Stop and remove Graylog container
+      community.docker.docker_container:
+        name: "{{ graylog_container_name }}"
+        state: absent
+        force_kill: true
+        remove_volumes: false
+      failed_when: false
+
+    - name: Stop and remove OpenSearch container
+      community.docker.docker_container:
+        name: "{{ graylog_opensearch_container_name }}"
+        state: absent
+        force_kill: true
+        remove_volumes: false
+      failed_when: false
+
+    - name: Stop and remove MongoDB container
+      community.docker.docker_container:
+        name: "{{ graylog_mongo_container_name }}"
+        state: absent
+        force_kill: true
+        remove_volumes: false
+      failed_when: false
+
+    - name: Remove named volumes
+      community.docker.docker_volume:
+        name: "{{ graylog_volume_item }}"
+        state: absent
+      loop:
+        - "{{ graylog_data_volume }}"
+        - "{{ graylog_journal_volume }}"
+        - "{{ graylog_mongo_volume }}"
+        - "{{ graylog_opensearch_volume }}"
+      loop_control:
+        loop_var: graylog_volume_item
+
+    - name: Wipe host data directories
+      ansible.builtin.file:
+        path: "{{ graylog_data_dir_item }}"
+        state: absent
+      loop:
+        - "{{ graylog_volumes_root }}/graylog/data"
+        - "{{ graylog_volumes_root }}/graylog/journal"
+        - "{{ graylog_volumes_root }}/mongo/data"
+        - "{{ graylog_volumes_root }}/opensearch/data"
+      loop_control:
+        loop_var: graylog_data_dir_item
+
+- name: Assert Graylog secrets are provided
+  ansible.builtin.assert:
+    that:
+      - graylog_password_secret | length > 0
+      - graylog_root_password_sha2 | length == 64
+    fail_msg: "graylog_password_secret and graylog_root_password_sha2 must be set (use Ansible Vault/Hashicorp Vault)."
+  tags: [monitoring, graylog]
+
+- name: Ensure Graylog host directories exist (Mongo/OpenSearch)
+  ansible.builtin.file:
+    path: "{{ graylog_dir_item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+    recurse: true
+  loop:
+    - "{{ graylog_volumes_root }}/mongo/data"
+    - "{{ graylog_volumes_root }}/opensearch/data"
+  loop_control:
+    loop_var: graylog_dir_item
+  tags: [monitoring, graylog]
+
+- name: Ensure OpenSearch data directory ownership
+  ansible.builtin.file:
+    path: "{{ graylog_volumes_root }}/opensearch/data"
+    state: directory
+    owner: "{{ graylog_opensearch_user_id }}"
+    group: "{{ graylog_opensearch_group_id }}"
+    mode: '0775'
+    recurse: true
+  tags: [monitoring, graylog]
+
+- name: Ensure Graylog data directories exist with correct ownership
+  ansible.builtin.file:
+    path: "{{ graylog_owned_dir_item }}"
+    state: directory
+    owner: "{{ graylog_user_id }}"
+    group: "{{ graylog_group_id }}"
+    mode: '0775'
+    recurse: true
+  loop:
+    - "{{ graylog_volumes_root }}/graylog/data"
+    - "{{ graylog_volumes_root }}/graylog/data/config"
+    - "{{ graylog_volumes_root }}/graylog/journal"
+  loop_control:
+    loop_var: graylog_owned_dir_item
+  tags: [monitoring, graylog]
+
+- name: Render Graylog configuration
+  ansible.builtin.template:
+    src: graylog.conf.j2
+    dest: "{{ graylog_volumes_root }}/graylog/data/config/graylog.conf"
+    owner: "{{ graylog_user_id }}"
+    group: "{{ graylog_group_id }}"
+    mode: '0640'
+  tags: [monitoring, graylog]
+  notify: [Restart Graylog]
+
+- name: Create Graylog named volumes bound to host paths
+  community.docker.docker_volume:
+    name: "{{ graylog_volume_map_item.name }}"
+    state: present
+    driver: local
+    driver_options:
+      o: bind
+      type: none
+      device: "{{ graylog_volume_map_item.host_path }}"
+  loop:
+    - { name: "{{ graylog_mongo_volume }}", host_path: "{{ graylog_volumes_root }}/mongo/data" }
+    - { name: "{{ graylog_opensearch_volume }}", host_path: "{{ graylog_volumes_root }}/opensearch/data" }
+    - { name: "{{ graylog_data_volume }}", host_path: "{{ graylog_volumes_root }}/graylog/data" }
+    - { name: "{{ graylog_journal_volume }}", host_path: "{{ graylog_volumes_root }}/graylog/journal" }
+  loop_control:
+    label: "{{ graylog_volume_map_item.name }} -> {{ graylog_volume_map_item.host_path }}"
+    loop_var: graylog_volume_map_item
+  tags: [monitoring, graylog]
+
+- name: Ensure MongoDB container for Graylog is running
+  community.docker.docker_container:
+    name: "{{ graylog_mongo_container_name }}"
+    image: "{{ graylog_mongo_image }}"
+    restart_policy: "{{ graylog_mongo_restart_policy }}"
+    networks:
+      - name: "{{ graylog_network }}"
+    env: {}
+    volumes:
+      - "{{ graylog_mongo_volume }}:/data/db"
+    state: started
+    restart: true
+    pull: true
+  tags: [monitoring, graylog]
+  notify: [Restart Graylog]
+
+- name: Ensure OpenSearch container for Graylog is running
+  community.docker.docker_container:
+    name: "{{ graylog_opensearch_container_name }}"
+    image: "{{ graylog_opensearch_image }}"
+    restart_policy: "{{ graylog_opensearch_restart_policy }}"
+    networks:
+      - name: "{{ graylog_network }}"
+    env:
+      discovery.type: "single-node"
+      plugins.security.disabled: "true"
+      OPENSEARCH_JAVA_OPTS: "{{ graylog_opensearch_java_opts }}"
+    ulimits:
+      - nofile:262144:262144
+    volumes:
+      - "{{ graylog_opensearch_volume }}:/usr/share/opensearch/data"
+    state: started
+    restart: true
+    pull: true
+  tags: [monitoring, graylog]
+  notify: [Restart Graylog]
+
+- name: Wait for OpenSearch API to become ready
+  ansible.builtin.shell: |
+    docker exec {{ graylog_opensearch_container_name }} sh -lc "curl -sSf http://localhost:9200 > /dev/null"
+  register: graylog_opensearch_ready
+  retries: 30
+  delay: 5
+  changed_when: false
+  until: graylog_opensearch_ready.rc == 0
+  tags: [monitoring, graylog]
+
+- name: Ensure Graylog container is running
+  community.docker.docker_container:
+    name: "{{ graylog_container_name }}"
+    image: "{{ graylog_image }}"
+    restart_policy: "{{ graylog_restart_policy }}"
+    networks:
+      - name: "{{ graylog_network }}"
+    env:
+      GRAYLOG_HTTP_BIND_ADDRESS: "{{ graylog_http_bind }}"
+      GRAYLOG_HTTP_PUBLISH_URI: "{{ graylog_http_publish_uri }}"
+      GRAYLOG_ROOT_TIMEZONE: "UTC"
+      GRAYLOG_PASSWORD_SECRET: "{{ graylog_password_secret }}"
+      GRAYLOG_ROOT_PASSWORD_SHA2: "{{ graylog_root_password_sha2 }}"
+      GRAYLOG_MONGODB_URI: "mongodb://{{ graylog_mongo_container_name }}:27017/graylog"
+      GRAYLOG_OPENSEARCH_HOSTS: "http://{{ graylog_opensearch_container_name }}:9200"
+    published_ports: "{{ graylog_published_ports }}"
+    volumes:
+      - "{{ graylog_data_volume }}:/usr/share/graylog/data"
+      - "{{ graylog_journal_volume }}:/usr/share/graylog/data/journal"
+    state: started
+    restart: true
+    pull: true
+  tags: [monitoring, graylog]
+  notify: [Restart Graylog]

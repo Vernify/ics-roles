@@ -1,0 +1,8 @@
+{#
+  Renders /etc/docker/daemon.json merging optional data-root and extra settings
+#}
+{% set base = {} %}
+{% if docker_setup_data_root | length > 0 %}
+{% set base = base | combine({'data-root': docker_setup_data_root}) %}
+{% endif %}
+{{ (base | combine(docker_setup_daemon_extra)) | to_nice_json }}

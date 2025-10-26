@@ -1,0 +1,38 @@
+---
+# Defaults for monitoring_common role
+
+# Root directory for all persistent docker volumes
+monitoring_common_volumes_root: "/opt/docker_volumes"
+
+# Docker network name for the monitoring stack
+monitoring_common_network_name: "monitoring"
+
+# Named volumes and their host paths to bind
+# Each item: { name: <docker_volume_name>, host_path: <absolute host dir> }
+monitoring_common_named_volumes: []
+
+# Whether to ensure Docker engine is present (best effort)
+monitoring_common_manage_docker: true
+
+# Note: automated Docker installation in this role currently supports Debian/Ubuntu
+# (apt-based) hosts. The role will only attempt to install/start Docker when the
+# host reports an Ansible `ansible_os_family` of 'Debian'. For other platforms,
+# set `monitoring_common_manage_docker: false` and manage Docker via your distro
+# specific role or provisioning pipeline.
+
+# Additional sysctl settings to apply. Includes required setting for OpenSearch by default.
+monitoring_common_sysctl:
+  vm.max_map_count: "262144"
+
+# Optional: Prepare a dedicated disk for Docker data and volumes
+# When enabled, the role will:
+# - Create an LVM PV on monitoring_common_docker_device
+# - Create a VG and LV
+# - Format the LV with XFS (by default)
+# - Mount it at monitoring_common_docker_mountpoint (defaults to volumes root)
+monitoring_common_prepare_docker_disk: false
+monitoring_common_docker_device: "/dev/sdb"
+monitoring_common_docker_vg: "dockervg"
+monitoring_common_docker_lv: "docker"
+monitoring_common_docker_fs_type: "xfs"
+monitoring_common_docker_mountpoint: "{{ monitoring_common_volumes_root }}"

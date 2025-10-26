@@ -158,6 +158,16 @@ The primary use case for this collection is user management across customer envi
 
 ## Role Documentation
 
+### New roles in 2.0.0 (monitoring stack)
+
+The collection now includes reusable roles for the monitoring stack, enabling consistent deployments across organizations:
+
+- ics.common.monitoring_common — prepares host (Docker engine, sysctl, network, named volumes)
+- ics.common.monitoring_proxy — Nginx reverse proxy for Graphite, Grafana, Graylog (renamed from nginx to avoid collisions)
+- ics.common.graphite — Graphite with StatsD
+- ics.common.grafana — Grafana with persistent storage
+- ics.common.graylog — Graylog 6.x with MongoDB and OpenSearch (single-node)
+
 ### user_management
 
 **Primary Role**: Advanced user and group management with custom sudo rules per group.

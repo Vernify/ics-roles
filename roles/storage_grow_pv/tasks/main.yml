@@ -1,0 +1,116 @@
+---
+# Grow a single-PV disk partition to consume free space and pvresize
+
+- name: Check if role is enabled
+  ansible.builtin.assert:
+    that: storage_grow_pv_enabled | bool
+    quiet: true
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Ensure growpart is installed (OS-specific)
+  ansible.builtin.package:
+    name: "{{ storage_grow_pv_growpart_packages.get(ansible_os_family, storage_grow_pv_growpart_packages['default']) }}"
+    state: present
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Ensure lsblk is available (util-linux)
+  ansible.builtin.package:
+    name: util-linux
+    state: present
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Discover PV devices when not provided
+  ansible.builtin.command: pvs --noheadings -o pv_name
+  register: storage_grow_pv_pvs_cmd
+  changed_when: false
+  when: storage_grow_pv_devices | length == 0
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Set PV device list fact
+  ansible.builtin.set_fact:
+    storage_grow_pv_devices_effective: >-
+      {{ storage_grow_pv_devices if (storage_grow_pv_devices | length > 0)
+         else (storage_grow_pv_pvs_cmd.stdout_lines | map('trim') | select('match', '^/.*') | list) }}
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Initialize PV metadata accumulator
+  ansible.builtin.set_fact:
+    storage_grow_pv_meta: []
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Collect parent disk (PKNAME) for each PV
+  ansible.builtin.command: lsblk -no PKNAME {{ storage_grow_pv_dev }}
+  register: storage_grow_pv_pkname_one
+  changed_when: false
+  loop: "{{ storage_grow_pv_devices_effective }}"
+  loop_control:
+    loop_var: storage_grow_pv_dev
+  tags: "{{ storage_grow_pv_tags }}"
+
+# Note: Some util-linux versions don't support PARTNUM. Extract part number from the PV device path.
+- name: Derive partition numbers from PV device names
+  ansible.builtin.set_fact:
+    storage_grow_pv_partnums: "{{ (storage_grow_pv_partnums | default({})) | combine({storage_grow_pv_dev: (storage_grow_pv_dev | regex_search('([0-9]+)$') | default(''))}) }}"
+  loop: "{{ storage_grow_pv_devices_effective }}"
+  loop_control:
+    loop_var: storage_grow_pv_dev
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Merge collected info into metadata list
+  ansible.builtin.set_fact:
+    storage_grow_pv_meta: '{{ storage_grow_pv_meta + [ { "pv": storage_grow_pv_tuple.0, "disk": ((storage_grow_pv_tuple.1.stdout_lines | default([])) | first | default("") | trim), "disk_path": "/dev/" ~ (((storage_grow_pv_tuple.1.stdout_lines | default([])) | first | default("") | trim)), "partnum": (storage_grow_pv_partnums[storage_grow_pv_tuple.0] | default("") | string) } ] }}'
+  loop: "{{ storage_grow_pv_devices_effective | zip(storage_grow_pv_pkname_one.results) | list }}"
+  loop_control:
+    loop_var: storage_grow_pv_tuple
+    label: "{{ storage_grow_pv_tuple.0 }}"
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Group PVs by parent disk
+  ansible.builtin.set_fact:
+    storage_grow_pv_grouped: "{{ storage_grow_pv_meta | groupby('disk') | list }}"
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Rescan parent disks (always)
+  ansible.builtin.shell: "echo 1 > /sys/class/block/{{ storage_grow_pv_group.0 }}/device/rescan"
+  loop: "{{ storage_grow_pv_grouped }}"
+  loop_control:
+    loop_var: storage_grow_pv_group
+    label: "{{ storage_grow_pv_group.0 }}"
+  changed_when: false
+  when: storage_grow_pv_rescan | bool
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Grow partition for single-PV disks
+  ansible.builtin.command: "growpart /dev/{{ storage_grow_pv_group.0 }} {{ (storage_grow_pv_group.1[0].partnum | trim) }}"
+  register: storage_grow_pv_growpart
+  changed_when: "'NOCHANGE' not in (storage_grow_pv_growpart.stdout | default(''))"
+  failed_when: false
+  loop: "{{ storage_grow_pv_grouped }}"
+  loop_control:
+    loop_var: storage_grow_pv_group
+    label: "{{ '/dev/' ~ storage_grow_pv_group.0 }}:{{ (storage_grow_pv_group.1[0].partnum | trim) }}"
+  when:
+    - (storage_grow_pv_group.1 | length) == 1
+    - (storage_grow_pv_group.1[0].partnum | trim | length) > 0
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: pvresize for single-PV disks
+  ansible.builtin.command: "pvresize {{ storage_grow_pv_group.1[0].pv }}"
+  register: storage_grow_pv_pvresize
+  changed_when: "'resized' in (storage_grow_pv_pvresize.stdout | default('')) or (storage_grow_pv_pvresize.rc == 0)"
+  failed_when: false
+  loop: "{{ storage_grow_pv_grouped }}"
+  loop_control:
+    loop_var: storage_grow_pv_group
+    label: "{{ storage_grow_pv_group.1[0].pv }}"
+  when:
+    - (storage_grow_pv_group.1 | length) == 1
+  tags: "{{ storage_grow_pv_tags }}"
+
+- name: Debug summary
+  ansible.builtin.debug:
+    msg: |
+      storage_grow_pv summary:
+      - Considered PVs: {{ storage_grow_pv_devices_effective | default(storage_grow_pv_devices) }}
+      - Grouped by parent disk: {{ storage_grow_pv_grouped | map('first') | list }}
+  tags: "{{ storage_grow_pv_tags }}"

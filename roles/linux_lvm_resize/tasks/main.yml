@@ -1,0 +1,16 @@
+---
+# Resize LVM logical volumes and grow filesystems
+
+- name: Resize LVs per plan and grow filesystems
+  community.general.lvol:
+    vg: "{{ linux_lvm_resize_item.vg }}"
+    lv: "{{ linux_lvm_resize_item.lv }}"
+    size: "{{ linux_lvm_resize_item.size }}"
+    resizefs: true
+    state: present
+  loop: "{{ linux_lvm_resize_plan }}"
+  loop_control:
+    loop_var: linux_lvm_resize_item
+    label: "{{ linux_lvm_resize_item.vg }}/{{ linux_lvm_resize_item.lv }} -> {{ linux_lvm_resize_item.size }}"
+  when: linux_lvm_resize_plan | length > 0
+  tags: [lvm, storage]

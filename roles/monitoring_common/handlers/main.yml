@@ -1,0 +1,8 @@
+---
+# Handlers for monitoring_common
+
+- name: Restart Docker
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+  listen: "Restart Docker"

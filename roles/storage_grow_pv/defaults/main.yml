@@ -1,0 +1,25 @@
+---
+# Defaults for storage_grow_pv role
+
+# Whether to enable the role actions (set false to noop)
+storage_grow_pv_enabled: true
+
+# Explicit list of PV devices to consider. If empty, auto-discover via `pvs`.
+# Example: ['/dev/sda3']
+storage_grow_pv_devices: []
+
+# Whether to always rescan parent block devices before attempting growth
+storage_grow_pv_rescan: true
+
+# Package names per OS family providing `growpart`
+storage_grow_pv_growpart_packages:
+  Debian: ['cloud-guest-utils']
+  Ubuntu: ['cloud-guest-utils']
+  RedHat: ['cloud-utils-growpart']
+  Rocky: ['cloud-utils-growpart']
+  OracleLinux: ['cloud-utils-growpart']
+  Fedora: ['cloud-utils-growpart']
+  default: ['cloud-utils-growpart']
+
+# Tagging controls
+storage_grow_pv_tags: ['storage', 'lvm', 'growpart']

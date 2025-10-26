@@ -1,0 +1,98 @@
+---
+# Deploy native Nginx as reverse proxy for the monitoring stack
+
+- name: Ensure monitoring proxy host directories exist
+  ansible.builtin.file:
+    path: "{{ monitoring_proxy_item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+    recurse: true
+  loop:
+    - "{{ monitoring_proxy_volumes_root }}/conf"
+    - "{{ monitoring_proxy_volumes_root }}/conf/conf.d"
+    - "{{ monitoring_proxy_volumes_root }}/certs"
+    - "{{ monitoring_proxy_volumes_root }}/logs"
+  loop_control:
+    loop_var: monitoring_proxy_item
+  tags: [monitoring, monitoring_proxy]
+
+- name: Create monitoring proxy named volumes bound to host paths
+  community.docker.docker_volume:
+    name: "{{ monitoring_proxy_volume_item.name }}"
+    state: present
+    driver: local
+    driver_options:
+      o: bind
+      type: none
+      device: "{{ monitoring_proxy_volume_item.host_path }}"
+  loop:
+    - { name: "{{ monitoring_proxy_conf_volume }}", host_path: "{{ monitoring_proxy_volumes_root }}/conf" }
+    - { name: "{{ monitoring_proxy_certs_volume }}", host_path: "{{ monitoring_proxy_volumes_root }}/certs" }
+    - { name: "{{ monitoring_proxy_logs_volume }}", host_path: "{{ monitoring_proxy_volumes_root }}/logs" }
+  loop_control:
+    label: "{{ monitoring_proxy_volume_item.name }} -> {{ monitoring_proxy_volume_item.host_path }}"
+    loop_var: monitoring_proxy_volume_item
+  tags: [monitoring, monitoring_proxy]
+
+- name: Render main nginx.conf
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ monitoring_proxy_volumes_root }}/conf/nginx.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Monitoring Proxy
+  tags: [monitoring, monitoring_proxy]
+
+- name: Assert domain is available when server_name is omitted
+  ansible.builtin.assert:
+    that:
+      - monitoring_proxy_domain | length > 0
+    fail_msg: >-
+      monitoring_proxy: 'monitoring_proxy_domain' is empty.
+      Set 'monitoring_proxy_domain' (defaults to ansible_domain).
+  when: monitoring_proxy_sites | selectattr('server_name', 'undefined') | list | length > 0
+  tags: [monitoring, monitoring_proxy]
+
+- name: Render site configs
+  ansible.builtin.template:
+    src: site.conf.j2
+    dest: "{{ monitoring_proxy_volumes_root }}/conf/conf.d/{{ monitoring_proxy_site_item.name }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ monitoring_proxy_sites }}"
+  loop_control:
+    loop_var: monitoring_proxy_site_item
+  when: monitoring_proxy_sites | length > 0
+  notify: Restart Monitoring Proxy
+  tags: [monitoring, monitoring_proxy]
+
+- name: Render default server config
+  ansible.builtin.template:
+    src: default.conf.j2
+    dest: "{{ monitoring_proxy_volumes_root }}/conf/conf.d/default.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Monitoring Proxy
+  tags: [monitoring, monitoring_proxy]
+
+- name: Ensure monitoring proxy container is running
+  community.docker.docker_container:
+    name: "{{ monitoring_proxy_container_name }}"
+    image: "{{ monitoring_proxy_image }}"
+    restart_policy: "{{ monitoring_proxy_restart_policy }}"
+    networks:
+      - name: "{{ monitoring_proxy_network }}"
+    published_ports: "{{ monitoring_proxy_published_ports }}"
+    volumes:
+      - "{{ monitoring_proxy_conf_volume }}:/etc/nginx"
+      - "{{ monitoring_proxy_certs_volume }}:/etc/nginx/certs"
+      - "{{ monitoring_proxy_logs_volume }}:/var/log/nginx"
+    state: started
+    restart: true
+    pull: true
+  tags: [monitoring, monitoring_proxy]

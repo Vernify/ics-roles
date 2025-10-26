@@ -1,0 +1,48 @@
+############################
+# Managed by Ansible (graylog role)
+# Minimal Graylog configuration for container deployment
+############################
+
+# Leadership (single node)
+is_leader = true
+
+# Node ID
+node_id_file = /usr/share/graylog/data/config/node-id
+
+# Directories
+bin_dir = /usr/share/graylog/bin
+data_dir = /usr/share/graylog/data
+plugin_dir = /usr/share/graylog/plugin
+
+# HTTP
+http_bind_address = {{ graylog_http_bind }}
+http_publish_uri = {{ graylog_http_publish_uri }}
+
+# Auth
+password_secret = {{ graylog_password_secret }}
+root_password_sha2 = {{ graylog_root_password_sha2 }}
+
+# MongoDB
+mongodb_uri = mongodb://{{ graylog_mongo_container_name }}:27017/graylog
+
+# OpenSearch (configured via elasticsearch_hosts for Graylog server)
+elasticsearch_hosts = http://{{ graylog_opensearch_container_name }}:9200
+
+# Journal
+message_journal_enabled = true
+message_journal_dir = /usr/share/graylog/data/journal
+
+# Performance defaults
+processbuffer_processors = 5
+outputbuffer_processors = 3
+output_batch_size = 500
+output_flush_interval = 1
+ring_size = 65536
+inputbuffer_ring_size = 65536
+inputbuffer_processors = 2
+inputbuffer_wait_strategy = blocking
+
+# UI/UX
+stream_aware_field_types = false
+allow_leading_wildcard_searches = false
+allow_highlighting = false
