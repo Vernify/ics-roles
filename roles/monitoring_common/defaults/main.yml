@@ -23,3 +23,16 @@ monitoring_common_manage_docker: true
 # Additional sysctl settings to apply. Includes required setting for OpenSearch by default.
 monitoring_common_sysctl:
   vm.max_map_count: "262144"
+
+# Optional: Prepare a dedicated disk for Docker data and volumes
+# When enabled, the role will:
+# - Create an LVM PV on monitoring_common_docker_device
+# - Create a VG and LV
+# - Format the LV with XFS (by default)
+# - Mount it at monitoring_common_docker_mountpoint (defaults to volumes root)
+monitoring_common_prepare_docker_disk: false
+monitoring_common_docker_device: "/dev/sdb"
+monitoring_common_docker_vg: "dockervg"
+monitoring_common_docker_lv: "docker"
+monitoring_common_docker_fs_type: "xfs"
+monitoring_common_docker_mountpoint: "{{ monitoring_common_volumes_root }}"

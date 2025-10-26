@@ -1,0 +1,12 @@
+---
+# linux_lvm_resize role defaults
+# Define desired LV sizes as a plan list; each item:
+# - vg: volume group name
+# - lv: logical volume name
+# - size: target size (e.g., 15G, 20G, 50G)
+# Example:
+# linux_lvm_resize_plan:
+#   - { vg: sysvg, lv: lv_opt,  size: '15G' }
+#   - { vg: sysvg, lv: lv_var,  size: '20G' }
+#   - { vg: sysvg, lv: lv_root, size: '50G' }
+linux_lvm_resize_plan: []
