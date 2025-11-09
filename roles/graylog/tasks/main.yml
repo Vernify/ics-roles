@@ -68,7 +68,6 @@
     owner: root
     group: root
     mode: '0755'
-    recurse: true
   loop:
     - "{{ graylog_volumes_root }}/mongo/data"
     - "{{ graylog_volumes_root }}/opensearch/data"
@@ -83,7 +82,6 @@
     owner: "{{ graylog_opensearch_user_id }}"
     group: "{{ graylog_opensearch_group_id }}"
     mode: '0775'
-    recurse: true
   tags: [monitoring, graylog]
 
 - name: Ensure Graylog data directories exist with correct ownership
@@ -93,7 +91,6 @@
     owner: "{{ graylog_user_id }}"
     group: "{{ graylog_group_id }}"
     mode: '0775'
-    recurse: true
   loop:
     - "{{ graylog_volumes_root }}/graylog/data"
     - "{{ graylog_volumes_root }}/graylog/data/config"
@@ -110,7 +107,9 @@
     group: "{{ graylog_group_id }}"
     mode: '0640'
   tags: [monitoring, graylog]
-  notify: [Restart Graylog]
+  notify:
+    - restart graylog
+    - "restart monitoring proxy"
 
 - name: Create Graylog named volumes bound to host paths
   community.docker.docker_volume:
@@ -142,10 +141,11 @@
     volumes:
       - "{{ graylog_mongo_volume }}:/data/db"
     state: started
-    restart: true
-    pull: true
+    pull: missing
   tags: [monitoring, graylog]
-  notify: [Restart Graylog]
+  notify:
+    - restart graylog
+    - "restart monitoring proxy"
 
 - name: Ensure OpenSearch container for Graylog is running
   community.docker.docker_container:
@@ -163,20 +163,31 @@
     volumes:
       - "{{ graylog_opensearch_volume }}:/usr/share/opensearch/data"
     state: started
-    restart: true
-    pull: true
+    pull: missing
   tags: [monitoring, graylog]
-  notify: [Restart Graylog]
+  notify:
+    - restart graylog
+    - "restart monitoring proxy"
 
 - name: Wait for OpenSearch API to become ready
-  ansible.builtin.shell: |
-    docker exec {{ graylog_opensearch_container_name }} sh -lc "curl -sSf http://localhost:9200 > /dev/null"
+  ansible.builtin.command: >-
+    docker exec {{ graylog_opensearch_container_name }}
+    curl -sSf http://localhost:9200 -o /dev/null
   register: graylog_opensearch_ready
   retries: 30
   delay: 5
   changed_when: false
   until: graylog_opensearch_ready.rc == 0
   tags: [monitoring, graylog]
+
+- name: Pre-pull Graylog image if missing
+  community.docker.docker_image:
+    name: "{{ graylog_image }}"
+    source: pull
+  tags: [monitoring, graylog]
+  register: graylog_image_pull_result
+  # fail early if image cannot be pulled so the operator sees the problem before container start
+  failed_when: graylog_image_pull_result is failed
 
 - name: Ensure Graylog container is running
   community.docker.docker_container:
@@ -188,6 +199,8 @@
     env:
       GRAYLOG_HTTP_BIND_ADDRESS: "{{ graylog_http_bind }}"
       GRAYLOG_HTTP_PUBLISH_URI: "{{ graylog_http_publish_uri }}"
+      GRAYLOG_HTTP_EXTERNAL_URI: "{{ graylog_http_external_uri }}"
+      GRAYLOG_HTTP_STATIC_CONTENT_SECURITY_POLICY: "{{ graylog_http_csp_policy }}"
       GRAYLOG_ROOT_TIMEZONE: "UTC"
       GRAYLOG_PASSWORD_SECRET: "{{ graylog_password_secret }}"
       GRAYLOG_ROOT_PASSWORD_SHA2: "{{ graylog_root_password_sha2 }}"
@@ -198,7 +211,72 @@
       - "{{ graylog_data_volume }}:/usr/share/graylog/data"
       - "{{ graylog_journal_volume }}:/usr/share/graylog/data/journal"
     state: started
-    restart: true
-    pull: true
+    pull: missing
   tags: [monitoring, graylog]
-  notify: [Restart Graylog]
+  notify:
+    - restart graylog
+    - "restart monitoring proxy"
+
+
+- name: Wait for Graylog API to become ready
+  ansible.builtin.uri:
+    url: "http://localhost:9000/api/system/lbstatus"
+    method: GET
+    status_code: 200
+  register: graylog_api_ready
+  retries: 30
+  delay: 10
+  changed_when: false
+  until: graylog_api_ready.status == 200
+  tags: [monitoring, graylog]
+
+- name: "Import Graylog artifacts (pipelines, dashboards, searches)"
+  ansible.builtin.include_tasks: import_gray_artifacts.yml
+  when: graylog_upload_enabled | bool
+  tags: [monitoring, graylog, graylog_artifacts]
+
+- name: Create Graylog inputs
+  when: graylog_create_inputs | bool
+  tags: [monitoring, graylog]
+  block:
+    - name: Get existing Graylog inputs
+      ansible.builtin.uri:
+        url: "http://localhost:9000/api/system/inputs"
+        method: GET
+        user: "{{ graylog_api_user }}"
+        password: "{{ graylog_api_password }}"
+        headers:
+          Accept: "application/json"
+          X-Requested-By: "ansible"
+        status_code: 200
+      register: graylog_existing_inputs
+      no_log: true
+
+    - name: Build list of existing input titles
+      ansible.builtin.set_fact:
+        graylog_existing_titles: "{{ graylog_existing_inputs.json.inputs | map(attribute='title') | list }}"
+      when: graylog_existing_inputs is defined and graylog_existing_inputs.json is defined
+
+    - name: Ensure Graylog inputs exist (idempotent by type+port)
+      ansible.builtin.uri:
+        url: "http://localhost:9000/api/system/inputs"
+        method: POST
+        user: "{{ graylog_api_user }}"
+        password: "{{ graylog_api_password }}"
+        body_format: json
+        body: "{{ graylog_input_item }}"
+        headers:
+          Content-Type: "application/json"
+          X-Requested-By: "ansible"
+        status_code: 201
+      loop: "{{ graylog_inputs }}"
+      loop_control:
+        loop_var: graylog_input_item
+      register: graylog_input_create
+      when: >
+        ((graylog_existing_inputs.json.inputs | default([]))
+          | selectattr('type','equalto', graylog_input_item.type)
+          | selectattr('attributes.port','equalto', graylog_input_item.configuration.port)
+          | selectattr('attributes.bind_address','equalto', (graylog_input_item.configuration.bind_address | default('0.0.0.0')))
+          | list) | length == 0
+      no_log: true

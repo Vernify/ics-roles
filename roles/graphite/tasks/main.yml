@@ -52,3 +52,4 @@
   tags: [monitoring, graphite]
   notify:
     - Restart Graphite
+    - "restart monitoring proxy"

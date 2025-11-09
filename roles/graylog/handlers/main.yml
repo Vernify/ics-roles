@@ -4,3 +4,9 @@
     name: "{{ graylog_container_name }}"
     restart: true
   listen: "restart graylog"
+
+- name: Restart Monitoring Proxy (from graylog role)
+  community.docker.docker_container:
+    name: "{{ monitoring_proxy_container_name | default('monitoring-proxy') }}"
+    restart: true
+  listen: "restart monitoring proxy"

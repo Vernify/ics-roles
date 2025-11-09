@@ -17,6 +17,14 @@ plugin_dir = /usr/share/graylog/plugin
 # HTTP
 http_bind_address = {{ graylog_http_bind }}
 http_publish_uri = {{ graylog_http_publish_uri }}
+{% if graylog_http_external_uri is defined and graylog_http_external_uri %}
+# External URI used by the web UI for absolute links behind reverse proxies
+http_external_uri = {{ graylog_http_external_uri }}
+{% endif %}
+{% if graylog_http_csp_policy is defined and graylog_http_csp_policy %}
+# Override Content Security Policy if needed (keep secure; allow same-origin assets)
+http_static_content_security_policy = "{{ graylog_http_csp_policy }}"
+{% endif %}
 
 # Auth
 password_secret = {{ graylog_password_secret }}

@@ -4,3 +4,9 @@
     name: "{{ graphite_container_name }}"
     restart: true
   listen: "restart graphite"
+
+- name: Restart Monitoring Proxy (from graphite role)
+  community.docker.docker_container:
+    name: "{{ monitoring_proxy_container_name | default('monitoring-proxy') }}"
+    restart: true
+  listen: "restart monitoring proxy"

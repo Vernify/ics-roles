@@ -51,3 +51,4 @@
   tags: [monitoring, grafana]
   notify:
     - Restart Grafana
+    - "restart monitoring proxy"
