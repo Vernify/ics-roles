@@ -1,0 +1,84 @@
+---
+# Process a single pipeline definition artifact referred by graylog_item
+- name: Read pipeline definition JSON
+  ansible.builtin.set_fact:
+    graylog_pipeline_def_json: "{{ lookup('file', graylog_item.path) | from_json }}"
+
+- name: Attempt to create pipeline definition (POST)
+  ansible.builtin.uri:
+    url: "{{ graylog_api_base }}/api/system/pipelines/pipeline"
+    method: POST
+    headers: "{{ graylog_api_headers }}"
+    user: "{{ graylog_api_auth_user if graylog_api_auth_user | length > 0 else omit }}"
+    password: "{{ graylog_api_auth_pass if graylog_api_auth_pass | length > 0 else omit }}"
+    force_basic_auth: "{{ (graylog_api_auth_user | length > 0) | bool }}"
+    validate_certs: "{{ graylog_validate_certs }}"
+    body_format: json
+    body: "{{ graylog_pipeline_def_json }}"
+    return_content: true
+  register: graylog_pipeline_def_post
+  failed_when: false
+  no_log: true
+
+- name: If POST failed, fetch existing pipeline definitions
+  ansible.builtin.uri:
+    url: "{{ graylog_api_base }}/api/system/pipelines/pipeline"
+    method: GET
+    headers: "{{ graylog_api_headers }}"
+    user: "{{ graylog_api_auth_user if graylog_api_auth_user | length > 0 else omit }}"
+    password: "{{ graylog_api_auth_pass if graylog_api_auth_pass | length > 0 else omit }}"
+    force_basic_auth: "{{ (graylog_api_auth_user | length > 0) | bool }}"
+    validate_certs: "{{ graylog_validate_certs }}"
+    return_content: true
+  register: graylog_existing_pipeline_defs
+  when: graylog_pipeline_def_post.status not in [200,201]
+  failed_when: false
+  no_log: true
+
+- name: Find existing pipeline definition by title
+  ansible.builtin.set_fact:
+    graylog_existing_pipeline_def: >-
+      {{ (graylog_existing_pipeline_defs.json | default([])) | selectattr('title', 'equalto', graylog_pipeline_def_json.title) | list | first | default({}) }}
+  when: graylog_existing_pipeline_defs is defined
+
+- name: Update pipeline definition when existing (PUT)
+  ansible.builtin.uri:
+    url: "{{ graylog_api_base }}/api/system/pipelines/pipeline/{{ graylog_existing_pipeline_def.id }}"
+    method: PUT
+    headers: "{{ graylog_api_headers }}"
+    user: "{{ graylog_api_auth_user if graylog_api_auth_user | length > 0 else omit }}"
+    password: "{{ graylog_api_auth_pass if graylog_api_auth_pass | length > 0 else omit }}"
+    force_basic_auth: "{{ (graylog_api_auth_user | length > 0) | bool }}"
+    validate_certs: "{{ graylog_validate_certs }}"
+    body_format: json
+    body: "{{ graylog_pipeline_def_json }}"
+    return_content: true
+  when: graylog_existing_pipeline_def is defined and graylog_existing_pipeline_def.id is defined
+  register: graylog_pipeline_def_put
+  failed_when: false
+  no_log: true
+
+- name: Store created or existing pipeline ID for connection
+  ansible.builtin.set_fact:
+    graylog_pipeline_id: "{{ (graylog_pipeline_def_post.json.id | default(graylog_existing_pipeline_def.id | default(''))) }}"
+  when: graylog_pipeline_def_post.status in [200,201] or (graylog_existing_pipeline_def is defined and graylog_existing_pipeline_def.id is defined)
+
+- name: Connect pipeline to default stream
+  ansible.builtin.uri:
+    url: "{{ graylog_api_base }}/api/system/pipelines/connections/to_stream"
+    method: POST
+    headers: "{{ graylog_api_headers }}"
+    user: "{{ graylog_api_auth_user if graylog_api_auth_user | length > 0 else omit }}"
+    password: "{{ graylog_api_auth_pass if graylog_api_auth_pass | length > 0 else omit }}"
+    force_basic_auth: "{{ (graylog_api_auth_user | length > 0) | bool }}"
+    validate_certs: "{{ graylog_validate_certs }}"
+    body_format: json
+    body:
+      stream_id: "{{ graylog_default_stream_id }}"
+      pipeline_ids:
+        - "{{ graylog_pipeline_id }}"
+    return_content: true
+  register: graylog_connection_result
+  when: graylog_pipeline_id is defined and graylog_pipeline_id | length > 0
+  failed_when: false
+  no_log: true

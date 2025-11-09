@@ -1,0 +1,35 @@
+---
+# Defaults for log_management role
+
+# Graylog server to forward logs to
+graylog_server: "graylog.{{ ansible_domain }}"
+
+# Port for GELF UDP
+graylog_gelf_port: 12201
+
+# Enable TLS forwarding
+log_tls_enabled: false
+
+# Environment tag for logs
+log_environment: "{{ env | default('unknown') }}"
+
+# Manage the main rsyslog.conf file by default on Debian/Ubuntu systems.
+# This can be overridden (set to false) in a play or inventory if you
+# need to preserve a handcrafted local file.
+# For non-Debian families this remains ignored unless explicitly enabled.
+log_management_manage_rsyslog_conf: true
+
+# Optional syslog input modules
+# Enable UDP listener (imudp) on Debian/Ubuntu
+log_management_enable_imudp: false
+log_management_imudp_port: 514
+
+# Enable TCP listener (imtcp) on Debian/Ubuntu
+log_management_enable_imtcp: false
+log_management_imtcp_port: 514
+
+# Rate limiting: prefer providing modern RainerScript snippet via
+# `log_management_rate_limit_rainerscript`. If empty, no rate limiting
+# directives are added. This avoids injecting legacy $SystemLogRateLimit* lines.
+log_management_enable_rate_limit: false
+log_management_rate_limit_rainerscript: ""

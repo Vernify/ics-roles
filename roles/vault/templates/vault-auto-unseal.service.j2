@@ -1,0 +1,12 @@
+[Unit]
+Description=Vault Auto-Unseal using saved keys
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/vault-auto-unseal
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

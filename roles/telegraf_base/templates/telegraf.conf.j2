@@ -4,7 +4,7 @@
 #
 [global_tags]
   app = "{{ telegraf_app }}"
-  domain = "{{ telegraf_domain }}"
+  domain = "{{ monitoring_domain | default(telegraf_domain | default(ansible_domain | default(''))) }}"
   source = "{{ telegraf_source }}"
 
 [agent]
@@ -30,16 +30,3 @@
 [[inputs.netstat]]
 [[inputs.swap]]
 [[inputs.system]]
-
-#
-# OUTPUTS:
-#
-# --- Legacy Graphite Output (commented for migration) ---
-# [[outputs.graphite]]
-#   prefix = "telegraf"
-#   servers = [{% for server in telegraf_graphite_servers %}"{{ server }}",{% endfor %}]
-#   template = "domain.host.app.source.metric.tags.name.measurement.field"
-#   timeout = 2
-#
-# See graphite.conf.j2 for the new, uniform Graphite output configuration.
-#

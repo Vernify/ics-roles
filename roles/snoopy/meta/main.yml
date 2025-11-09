@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: Werner
+  description: Generic snoopy role (install/configure command auditing)
+  license: MIT
+  min_ansible_version: "2.9"
+dependencies: []

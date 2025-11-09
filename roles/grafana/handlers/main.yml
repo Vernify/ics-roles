@@ -3,3 +3,9 @@
   community.docker.docker_container:
     name: "{{ grafana_container_name }}"
     restart: true
+
+- name: Restart Monitoring Proxy (from grafana role)
+  community.docker.docker_container:
+    name: "{{ monitoring_proxy_container_name | default('monitoring-proxy') }}"
+    restart: true
+  listen: "restart monitoring proxy"

@@ -1,0 +1,21 @@
+## rsyslog imfile snippet for auditd (managed by Ansible)
+# This drop-in tails /var/log/audit/audit.log and tags entries so rsyslog pipelines
+# can route and forward them to the collector.
+
+module(load="imfile" PollingInterval="10")
+
+input(type="imfile"
+      File="/var/log/audit/audit.log"
+      Tag="{{ auditd_rsyslog_tag }}"
+      Severity="info"
+      Facility="{{ auditd_rsyslog_facility }}"
+      PersistStateInterval="200"
+      ReadMode="2"
+)
+
+# Attach a structured field with the source filename for messages coming from this input
+if ($syslogtag == "{{ auditd_rsyslog_tag }}") then {
+      set $!source_file = "/var/log/audit/audit.log";
+}
+
+# end of managed file

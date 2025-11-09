@@ -52,6 +52,7 @@
         - "{{ graylog_volumes_root }}/opensearch/data"
       loop_control:
         loop_var: graylog_data_dir_item
+      tags: [monitoring, graylog, reset]
 
 - name: Assert Graylog secrets are provided
   ansible.builtin.assert:
@@ -61,29 +62,60 @@
     fail_msg: "graylog_password_secret and graylog_root_password_sha2 must be set (use Ansible Vault/Hashicorp Vault)."
   tags: [monitoring, graylog]
 
-- name: Ensure Graylog host directories exist (Mongo/OpenSearch)
-  ansible.builtin.file:
-    path: "{{ graylog_dir_item }}"
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
-    recurse: true
-  loop:
-    - "{{ graylog_volumes_root }}/mongo/data"
-    - "{{ graylog_volumes_root }}/opensearch/data"
-  loop_control:
-    loop_var: graylog_dir_item
+- name: Check host mapping for MongoDB UID
+  ansible.builtin.command:
+    argv:
+      - getent
+      - passwd
+      - "{{ graylog_mongo_user_id }}"
+  register: graylog_mongo_uid_map
+  changed_when: false
+  failed_when: false
   tags: [monitoring, graylog]
 
-- name: Ensure OpenSearch data directory ownership
+- name: Warn if MongoDB UID maps to a non-root host user
+  ansible.builtin.debug:
+    msg: |
+      The MongoDB container runs as UID/GID {{ graylog_mongo_user_id }}/{{ graylog_mongo_group_id }}.
+      On this host that numeric UID maps to: {{ graylog_mongo_uid_map.stdout | default('no entry') }}.
+      If this user is unexpected (for example dnsmasq), consider using Docker named volumes
+      or adjusting ownership. This is informational only.
+- name: Check host mapping for OpenSearch UID
+  ansible.builtin.command:
+    argv:
+      - getent
+      - passwd
+      - "{{ graylog_opensearch_user_id }}"
+  register: graylog_opensearch_uid_map
+  changed_when: false
+  failed_when: false
+  tags: [monitoring, graylog]
+
+- name: Warn if OpenSearch UID maps to a non-root host user
+  ansible.builtin.debug:
+    msg: |
+      The OpenSearch container runs as UID/GID {{ graylog_opensearch_user_id }}/{{ graylog_opensearch_group_id }}.
+      On this host that numeric UID maps to: {{ graylog_opensearch_uid_map.stdout | default('no entry') }}.
+      If this user is unexpected, consider using Docker named volumes or adjusting ownership.
+  when: graylog_opensearch_uid_map.stdout is defined and graylog_opensearch_uid_map.stdout != ''
+  tags: [monitoring, graylog]
+
+- name: Ensure MongoDB data directory exists with correct ownership
+  ansible.builtin.file:
+    path: "{{ graylog_volumes_root }}/mongo/data"
+    state: directory
+    owner: "{{ graylog_mongo_user_id }}"
+    group: "{{ graylog_mongo_group_id }}"
+    mode: '0755'
+  tags: [monitoring, graylog]
+
+- name: Ensure OpenSearch data directory exists with correct ownership
   ansible.builtin.file:
     path: "{{ graylog_volumes_root }}/opensearch/data"
     state: directory
     owner: "{{ graylog_opensearch_user_id }}"
     group: "{{ graylog_opensearch_group_id }}"
     mode: '0775'
-    recurse: true
   tags: [monitoring, graylog]
 
 - name: Ensure Graylog data directories exist with correct ownership
@@ -93,7 +125,6 @@
     owner: "{{ graylog_user_id }}"
     group: "{{ graylog_group_id }}"
     mode: '0775'
-    recurse: true
   loop:
     - "{{ graylog_volumes_root }}/graylog/data"
     - "{{ graylog_volumes_root }}/graylog/data/config"
@@ -110,7 +141,9 @@
     group: "{{ graylog_group_id }}"
     mode: '0640'
   tags: [monitoring, graylog]
-  notify: [Restart Graylog]
+  notify:
+    - restart graylog
+    - "restart monitoring proxy"
 
 - name: Create Graylog named volumes bound to host paths
   community.docker.docker_volume:
@@ -142,10 +175,11 @@
     volumes:
       - "{{ graylog_mongo_volume }}:/data/db"
     state: started
-    restart: true
-    pull: true
+    pull: missing
   tags: [monitoring, graylog]
-  notify: [Restart Graylog]
+  notify:
+    - restart graylog
+    - "restart monitoring proxy"
 
 - name: Ensure OpenSearch container for Graylog is running
   community.docker.docker_container:
@@ -163,20 +197,37 @@
     volumes:
       - "{{ graylog_opensearch_volume }}:/usr/share/opensearch/data"
     state: started
-    restart: true
-    pull: true
+    pull: missing
   tags: [monitoring, graylog]
-  notify: [Restart Graylog]
+  notify:
+    - restart graylog
+    - "restart monitoring proxy"
 
 - name: Wait for OpenSearch API to become ready
-  ansible.builtin.shell: |
-    docker exec {{ graylog_opensearch_container_name }} sh -lc "curl -sSf http://localhost:9200 > /dev/null"
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ graylog_opensearch_container_name }}"
+      - curl
+      - -sSf
+      - http://localhost:9200
+      - -o
+      - /dev/null
   register: graylog_opensearch_ready
   retries: 30
   delay: 5
   changed_when: false
   until: graylog_opensearch_ready.rc == 0
   tags: [monitoring, graylog]
+
+- name: Pull Graylog image
+  community.docker.docker_image:
+    name: "{{ graylog_image }}"
+    source: pull
+  tags: [monitoring, graylog]
+  register: graylog_image_pull_result
+  failed_when: graylog_image_pull_result is failed
 
 - name: Ensure Graylog container is running
   community.docker.docker_container:
@@ -188,6 +239,8 @@
     env:
       GRAYLOG_HTTP_BIND_ADDRESS: "{{ graylog_http_bind }}"
       GRAYLOG_HTTP_PUBLISH_URI: "{{ graylog_http_publish_uri }}"
+      GRAYLOG_HTTP_EXTERNAL_URI: "{{ graylog_http_external_uri }}"
+      GRAYLOG_HTTP_STATIC_CONTENT_SECURITY_POLICY: "{{ graylog_http_csp_policy }}"
       GRAYLOG_ROOT_TIMEZONE: "UTC"
       GRAYLOG_PASSWORD_SECRET: "{{ graylog_password_secret }}"
       GRAYLOG_ROOT_PASSWORD_SHA2: "{{ graylog_root_password_sha2 }}"
@@ -198,7 +251,72 @@
       - "{{ graylog_data_volume }}:/usr/share/graylog/data"
       - "{{ graylog_journal_volume }}:/usr/share/graylog/data/journal"
     state: started
-    restart: true
-    pull: true
+    pull: missing
   tags: [monitoring, graylog]
-  notify: [Restart Graylog]
+  notify:
+    - restart graylog
+    - "restart monitoring proxy"
+
+
+- name: Wait for Graylog API to become ready
+  ansible.builtin.uri:
+    url: "http://localhost:9000/api/system/lbstatus"
+    method: GET
+    status_code: 200
+  register: graylog_api_ready
+  retries: 30
+  delay: 10
+  changed_when: false
+  until: graylog_api_ready.status == 200
+  tags: [monitoring, graylog]
+
+- name: "Import Graylog artifacts (pipelines and pipeline definitions)"
+  ansible.builtin.include_tasks: import_gray_artifacts.yml
+  when: graylog_upload_enabled | bool
+  tags: [monitoring, graylog, graylog_artifacts]
+
+- name: Create Graylog inputs
+  when: graylog_create_inputs | bool
+  tags: [monitoring, graylog]
+  block:
+    - name: Get existing Graylog inputs
+      ansible.builtin.uri:
+        url: "http://localhost:9000/api/system/inputs"
+        method: GET
+        user: "{{ graylog_api_user }}"
+        password: "{{ graylog_api_password }}"
+        headers:
+          Accept: "application/json"
+          X-Requested-By: "ansible"
+        status_code: 200
+      register: graylog_existing_inputs
+      no_log: true
+
+    - name: Build list of existing input titles
+      ansible.builtin.set_fact:
+        graylog_existing_titles: "{{ graylog_existing_inputs.json.inputs | map(attribute='title') | list }}"
+      when: graylog_existing_inputs is defined and graylog_existing_inputs.json is defined
+
+    - name: Ensure Graylog inputs exist (idempotent by type+port)
+      ansible.builtin.uri:
+        url: "http://localhost:9000/api/system/inputs"
+        method: POST
+        user: "{{ graylog_api_user }}"
+        password: "{{ graylog_api_password }}"
+        body_format: json
+        body: "{{ graylog_input_item }}"
+        headers:
+          Content-Type: "application/json"
+          X-Requested-By: "ansible"
+        status_code: 201
+      loop: "{{ graylog_inputs }}"
+      loop_control:
+        loop_var: graylog_input_item
+      register: graylog_input_create
+      when: >
+        ((graylog_existing_inputs.json.inputs | default([]))
+          | selectattr('type','equalto', graylog_input_item.type)
+          | selectattr('attributes.port','equalto', graylog_input_item.configuration.port)
+          | selectattr('attributes.bind_address','equalto', (graylog_input_item.configuration.bind_address | default('0.0.0.0')))
+          | list) | length == 0
+      no_log: true

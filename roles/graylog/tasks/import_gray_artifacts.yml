@@ -1,0 +1,65 @@
+---
+# Clean idempotent import for Graylog artifacts (pipelines and pipeline definitions)
+# Uses token auth if graylog_api_token provided; falls back to basic auth.
+
+- name: Ensure required artifact variables are defined
+  ansible.builtin.assert:
+    that:
+      - graylog_artifacts is defined
+      - graylog_artifacts.pipelines is defined
+      - graylog_artifacts.pipeline_definitions is defined
+    fail_msg: "graylog_artifacts.pipelines and graylog_artifacts.pipeline_definitions must be defined"
+
+- name: Set Graylog API base and headers
+  ansible.builtin.set_fact:
+    graylog_api_base: "{{ graylog_api_url.rstrip('/') }}"
+    graylog_api_headers: >-
+      {{ ({'X-Requested-By': 'ansible', 'Content-Type': 'application/json'}) |
+         combine( (graylog_api_token is defined and graylog_api_token | length > 0)
+                  | ternary({'Authorization': 'Token ' + graylog_api_token }, {}) ) }}
+    graylog_api_auth_user: "{{ (graylog_api_token is defined and graylog_api_token | length > 0) | ternary('', graylog_api_user) }}"
+    graylog_api_auth_pass: "{{ (graylog_api_token is defined and graylog_api_token | length > 0) | ternary('', graylog_api_password) }}"
+
+############################
+# Pipelines
+############################
+- name: Find pipeline files
+  ansible.builtin.find:
+    paths: "{{ graylog_artifacts.pipelines }}"
+    patterns: '*.json'
+    file_type: file
+  register: graylog_pipeline_files
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Process pipeline rule artifacts
+  when: graylog_pipeline_files.files | length > 0
+  run_once: true
+  ansible.builtin.include_tasks: process_pipeline_rule.yml
+  loop: "{{ graylog_pipeline_files.files }}"
+  loop_control:
+    loop_var: graylog_item
+    label: "{{ graylog_item.path }}"
+
+############################
+# Pipeline Definitions (and stream connections)
+############################
+- name: Find pipeline definition files
+  ansible.builtin.find:
+    paths: "{{ graylog_artifacts.pipeline_definitions }}"
+    patterns: '*.json'
+    file_type: file
+  register: graylog_pipeline_def_files
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Process pipeline definition artifacts
+  when: graylog_pipeline_def_files.files | length > 0
+  run_once: true
+  ansible.builtin.include_tasks: process_pipeline_definition.yml
+  loop: "{{ graylog_pipeline_def_files.files }}"
+  loop_control:
+    loop_var: graylog_item
+    label: "{{ graylog_item.path }}"

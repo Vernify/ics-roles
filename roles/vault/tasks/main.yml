@@ -1,0 +1,182 @@
+---
+# Deploy HashiCorp Vault container with file storage and persistent data
+
+- name: Ensure Vault directories exist
+  ansible.builtin.file:
+    path: "{{ vault_path_item }}"
+    state: directory
+    owner: "{{ vault_owner }}"
+    group: "{{ vault_group }}"
+    mode: "{{ vault_dir_mode }}"
+  loop:
+    - "{{ vault_data_dir }}"
+    - "{{ vault_config_dir }}"
+    - "{{ vault_logs_dir }}"
+  loop_control:
+    loop_var: vault_path_item
+  tags: [vault]
+
+- name: Render Vault configuration
+  ansible.builtin.template:
+    src: vault.hcl.j2
+    dest: "{{ vault_config_dir }}/vault.hcl"
+    owner: "{{ vault_owner }}"
+    group: "{{ vault_group }}"
+    mode: "{{ vault_file_mode }}"
+  register: vault_cfg
+  tags: [vault]
+
+- name: Ensure CI Docker network exists
+  community.docker.docker_network:
+    name: "{{ vault_network_name }}"
+    state: present
+  tags: [vault]
+
+- name: Deploy Vault container
+  community.docker.docker_container:
+    name: "{{ vault_container_name }}"
+    image: "{{ vault_image }}"
+    state: started
+    restart_policy: "{{ vault_restart_policy }}"
+    networks:
+      - name: "{{ vault_network_name }}"
+    published_ports:
+      - "{{ vault_port }}:{{ vault_port }}"
+      - "{{ vault_cluster_port }}:{{ vault_cluster_port }}"
+    volumes:
+      - "{{ vault_data_dir }}:/vault/data"
+      - "{{ vault_config_dir }}:/vault/config"
+      - "{{ vault_logs_dir }}:/vault/logs"
+    command: ["vault", "server", "-config=/vault/config/vault.hcl"]
+    env: >-
+      {{ {'VAULT_API_ADDR': vault_api_addr, 'VAULT_CLUSTER_ADDR': vault_cluster_addr} | combine(vault_env) }}
+    capabilities:
+      - IPC_LOCK
+    healthcheck:
+      test: ["CMD", "vault", "status", "-address={{ vault_api_addr }}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+  notify: Restart Vault
+  tags: [vault]
+
+- name: Wait for Vault API to respond (health)
+  ansible.builtin.uri:
+    url: "{{ vault_api_addr }}/v1/sys/health"
+    method: GET
+    status_code: [200, 429, 501, 503]
+  register: vault_health
+  failed_when: false
+  until: vault_health is defined and (vault_health.status | default(0)) in [200, 429, 501, 503]
+  retries: 30
+  delay: 5
+  tags: [vault]
+
+- name: Initialize Vault if not initialized
+  ansible.builtin.uri:
+    url: "{{ vault_api_addr }}/v1/sys/init"
+    method: POST
+    body_format: json
+    body:
+      secret_shares: "{{ vault_key_shares | int }}"
+      secret_threshold: "{{ vault_key_threshold | int }}"
+    status_code: 200
+  register: vault_init_resp
+  when:
+    - vault_auto_init | bool
+    - vault_health.status | default(0) == 501  # not initialized
+  tags: [vault]
+
+- name: Persist Vault init artifacts (keys and root token)
+  ansible.builtin.copy:
+    dest: "{{ vault_artifact_item.dest }}"
+    content: "{{ vault_artifact_item.content }}"
+    owner: "{{ vault_owner }}"
+    group: "{{ vault_group }}"
+    mode: '0600'
+  loop:
+    - { dest: "{{ vault_init_file }}", content: "{{ vault_init_resp.json | to_nice_json }}" }
+    - { dest: "{{ vault_unseal_keys_file }}", content: "{{ (vault_init_resp.json.unseal_keys_b64 | join('\n')) if (vault_init_resp is defined and vault_init_resp.json is defined) else '' }}" }
+    - { dest: "{{ vault_root_token_file }}", content: "{{ (vault_init_resp.json.root_token | default('')) if (vault_init_resp is defined and vault_init_resp.json is defined) else '' }}" }
+  loop_control:
+    loop_var: vault_artifact_item
+  when:
+    - vault_auto_init | bool
+    - vault_init_resp is defined
+    - vault_init_resp.json is defined
+  tags: [vault]
+
+- name: Read unseal keys from file
+  ansible.builtin.slurp:
+    src: "{{ vault_unseal_keys_file }}"
+  register: vault_unseal_keys_b64
+  when: vault_auto_init | bool
+  tags: [vault]
+
+- name: Parse unseal keys into list
+  ansible.builtin.set_fact:
+    vault_unseal_keys_list: "{{ (vault_unseal_keys_b64.content | b64decode).split('\n') | map('trim') | select | list }}"
+  when: vault_auto_init | bool
+  tags: [vault]
+
+- name: Unseal Vault using first threshold keys
+  ansible.builtin.uri:
+    url: "{{ vault_api_addr }}/v1/sys/unseal"
+    method: POST
+    body_format: json
+    body:
+      key: "{{ vault_unseal_keys_list[vault_key_item] }}"
+    status_code: 200
+  loop: "{{ range(0, vault_key_threshold | int) | list }}"
+  loop_control:
+    loop_var: vault_key_item
+  register: vault_unseal_results
+  when:
+    - vault_auto_init | bool
+    - vault_unseal_keys_b64 is defined
+    - (vault_unseal_keys_b64.content | b64decode) | length > 0
+  tags: [vault]
+
+- name: Ensure curl is installed for auto-unseal service (Debian)
+  ansible.builtin.apt:
+    name: curl
+    state: present
+  when: ansible_os_family == 'Debian' and (vault_auto_unseal_enabled | bool)
+  tags: [vault]
+
+- name: Ensure curl is installed for auto-unseal service (RedHat)
+  ansible.builtin.package:
+    name: curl
+    state: present
+  when: ansible_os_family in ['RedHat', 'Rocky', 'AlmaLinux', 'OracleLinux'] and (vault_auto_unseal_enabled | bool)
+  tags: [vault]
+
+- name: Install vault-auto-unseal helper script
+  ansible.builtin.template:
+    src: vault-auto-unseal.sh.j2
+    dest: /usr/local/bin/vault-auto-unseal
+    mode: '0750'
+    owner: root
+    group: root
+  when: vault_auto_unseal_enabled | bool
+  tags: [vault]
+
+- name: Install systemd unit for vault-auto-unseal
+  ansible.builtin.template:
+    src: vault-auto-unseal.service.j2
+    dest: /etc/systemd/system/vault-auto-unseal.service
+    mode: '0644'
+    owner: root
+    group: root
+  when: vault_auto_unseal_enabled | bool
+  tags: [vault]
+
+- name: Enable and start vault-auto-unseal service
+  ansible.builtin.systemd:
+    name: vault-auto-unseal
+    enabled: true
+    daemon_reload: true
+    state: started
+  when: vault_auto_unseal_enabled | bool
+  tags: [vault]

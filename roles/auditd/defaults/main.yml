@@ -1,0 +1,34 @@
+---
+# Defaults for the auditd role
+
+# auditd role defaults
+auditd_enabled: true
+auditd_log_format_enriched: true
+auditd_max_log_file_mb: 32
+auditd_num_logs: 5
+auditd_space_left_action: 'syslog'
+auditd_admin_space_left_action: 'halt'
+auditd_action_mail_acct: 'root'
+auditd_flush: 'data'
+# Safer default: do not make rules immutable by default; operators can opt-in
+auditd_immutable_rules: false
+
+# Rsyslog forwarding configuration
+auditd_rsyslog_conf_path: /etc/rsyslog.d/50-audit.conf
+auditd_rsyslog_tag: auditd
+auditd_rsyslog_facility: local6
+
+# Manage installation and service by default
+auditd_manage_packages: true
+auditd_manage_services: true
+
+# Define default audit rules as a list of name/rule pairs
+auditd_rules:
+  - name: sudo
+    rule: '-a always,exit -F arch=b64 -S execve -F path=/usr/bin/sudo -F key=sudo'
+  - name: sshd
+    rule: '-w /usr/sbin/sshd -p x -k sshd'
+  - name: etc_changes
+    rule: '-w /etc/ -p wa -k config_changes'
+  - name: logins
+    rule: '-w /var/log/lastlog -p wa -k logins'

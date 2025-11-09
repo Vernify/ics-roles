@@ -4,8 +4,8 @@
 graylog_network: "{{ monitoring_common_network_name | default('monitoring') }}"
 
 # Images
-graylog_image: graylog/graylog:6.3.5
-graylog_mongo_image: "mongo:6.0"
+graylog_image: graylog/graylog:7.0.0
+graylog_mongo_image: "mongo:7.0"
 graylog_opensearch_image: "opensearchproject/opensearch:2.11.1"
 
 # Container names
@@ -28,8 +28,8 @@ graylog_published_ports:
   - "12201:12201/udp"
 
 # Graylog secrets (use Vault)
-graylog_password_secret: ""
-graylog_root_password_sha2: ""
+graylog_password_secret: "{{ lookup('env', 'GRAYLOG_PASSWORD_SECRET') | default(('graylog-secret-' + ansible_hostname) | hash('sha256')) }}"
+graylog_root_password_sha2: "{{ graylog_root_password_plain | hash('sha256') }}"
 
 # Opensearch JVM options
 graylog_opensearch_java_opts: "-Xms1g -Xmx1g"
@@ -45,7 +45,20 @@ graylog_group_id: 1100
 
 # HTTP settings
 graylog_http_bind: "0.0.0.0:9000"
-graylog_http_publish_uri: "http://{{ graylog_container_name }}:9000/"
+# Publish/external URIs should reflect the public URL users access (fixes API-browser/CSP issues)
+graylog_http_publish_uri: "http://graylog.{{ monitoring_domain }}/"
+graylog_http_external_uri: "{{ graylog_http_publish_uri }}"
+graylog_http_csp_policy: >-
+  default-src 'self';
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' http://graylog.{{ monitoring_domain }};
+  style-src 'self' 'unsafe-inline' http://graylog.{{ monitoring_domain }};
+  img-src 'self' data: http://graylog.{{ monitoring_domain }};
+  font-src 'self' data: http://graylog.{{ monitoring_domain }};
+  connect-src 'self' http://graylog.{{ monitoring_domain }} ws://graylog.{{ monitoring_domain }};
+  frame-ancestors 'self';
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self'
 
 # Optionally wipe Graylog, OpenSearch, and Mongo data to start fresh
 graylog_reset_data: false
@@ -53,3 +66,54 @@ graylog_reset_data: false
 # OpenSearch container user/group ids
 graylog_opensearch_user_id: 1000
 graylog_opensearch_group_id: 1000
+
+# MongoDB container user/group ids (mongo:7.0 runs as UID/GID 999)
+graylog_mongo_user_id: 999
+graylog_mongo_group_id: 999
+
+# Graylog root password (plain text for API auth)
+graylog_root_password_plain: "{{ lookup('env', 'GRAYLOG_ROOT_PASSWORD') | default('admin') }}"
+
+# Inputs to create automatically
+graylog_create_inputs: true
+graylog_inputs:
+  - title: "GELF UDP"
+    type: "org.graylog2.inputs.gelf.udp.GELFUDPInput"
+    configuration:
+      bind_address: "0.0.0.0"
+      port: 12201
+      recv_buffer_size: 262144
+    global: true
+  - title: "GELF TCP"
+    type: "org.graylog2.inputs.gelf.tcp.GELFTCPInput"
+    configuration:
+      bind_address: "0.0.0.0"
+      port: 12202
+      recv_buffer_size: 262144
+    global: true
+  - title: "Syslog TCP"
+    type: "org.graylog2.inputs.syslog.tcp.SyslogTCPInput"
+    configuration:
+      bind_address: "0.0.0.0"
+      port: 1514
+      recv_buffer_size: 262144
+    global: true
+
+# Graylog API upload settings (for importing pipelines)
+graylog_api_url: "http://graylog.{{ monitoring_domain }}"
+# Reuse root credentials to avoid duplication; override if different API user is required.
+graylog_api_user: "{{ (lookup('env','GRAYLOG_API_USER') | default('admin')) }}"
+graylog_api_password: "{{ graylog_root_password_plain }}"
+graylog_api_token: ""  # Optional personal access token; if set, supersedes user/password auth
+graylog_validate_certs: false
+
+# Artifact locations relative to repo root
+graylog_artifacts:
+  pipelines: "collector/graylog/pipelines"
+  pipeline_definitions: "collector/graylog/pipelines_definitions"
+
+# Default stream ID to connect pipelines to (000000000000000000000001 = Default Stream)
+graylog_default_stream_id: "000000000000000000000001"
+
+# Enable the automatic upload/import of Graylog artifacts (off by default)
+graylog_upload_enabled: false

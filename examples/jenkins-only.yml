@@ -1,0 +1,18 @@
+---
+# Example: Deploy Jenkins only
+# Assumes Docker network 'ci' exists (create via pre_tasks or separate role)
+
+- name: Deploy Jenkins CI server
+  hosts: jenkins_hosts
+  become: true
+  roles:
+    - role: jenkins
+      vars:
+        jenkins_network_name: ci
+        jenkins_http_port: 8080
+        jenkins_agent_port: 50000
+        # Optional: enable Docker socket for builds
+        # jenkins_enable_docker: true
+        # Optional: custom env (e.g., disable setup wizard)
+        # jenkins_env:
+        #   JAVA_OPTS: "-Djenkins.install.runSetupWizard=false"

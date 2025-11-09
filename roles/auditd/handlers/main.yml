@@ -1,0 +1,25 @@
+---
+- name: Restart auditd
+  ansible.builtin.service:
+    name: auditd
+    state: restarted
+
+- name: Reload audit rules (try augenrules, restart auditd on failure)
+  ansible.builtin.shell: |
+    if augenrules --load; then
+      echo "augenrules loaded"
+      exit 0
+    else
+      echo "augenrules failed, restarting auditd"
+      systemctl restart auditd || true
+      exit 0
+    fi
+  args:
+    executable: /bin/bash
+  # handler should not fail a play run — we've handled restart fallback inline
+  changed_when: false
+
+- name: Restart rsyslog
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted

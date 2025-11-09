@@ -1,0 +1,5 @@
+{
+  "title": "normalize_tag_to_app",
+  "description": "Ensure 'app' field is populated from 'tag' when messages include a tag but not an app. Makes saved searches consistent.",
+  "source": "rule \"normalize_tag_to_app\"\nwhen\n  has_field(\"tag\") && !has_field(\"app\")\nthen\n  set_field(\"app\", to_string($message.tag));\nend\n"
+}

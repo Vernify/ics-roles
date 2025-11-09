@@ -1,0 +1,5 @@
+{
+  "title": "Message Enrichment",
+  "description": "Normalize and enrich log messages with parsed fields",
+  "source": "pipeline \"Message Enrichment\"\nstage 0 match either\n  rule \"normalize_tag_to_app\"\n  rule \"snoopy_parse\"\nend\n"
+}

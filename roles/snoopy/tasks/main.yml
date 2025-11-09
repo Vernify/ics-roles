@@ -1,0 +1,32 @@
+---
+- name: Install snoopy package
+  ansible.builtin.package:
+    name: snoopy
+    state: "{{ snoopy_package_state }}"
+  tags: ['install', 'snoopy']
+
+- name: Ensure /etc/ld.so.preload exists with correct owner/group/mode
+  ansible.builtin.file:
+    path: /etc/ld.so.preload
+    state: touch
+    owner: root
+    group: root
+    mode: '0644'
+  when: snoopy_log_to_syslog | bool
+  tags: ['config', 'snoopy']
+
+- name: Ensure libsnoopy in ld.so.preload
+  ansible.builtin.lineinfile:
+    path: /etc/ld.so.preload
+    line: "{{ snoopy_preload_path }}"
+    state: present
+    insertafter: EOF
+  when: snoopy_log_to_syslog | bool
+  tags: ['config', 'snoopy']
+
+- name: Ensure rsyslog is restarted after snoopy install (handler will run if needed)
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted
+  when: snoopy_log_to_syslog | bool
+  tags: ['service', 'snoopy']

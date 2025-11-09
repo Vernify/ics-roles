@@ -1,0 +1,9 @@
+---
+# Defaults for snoopy role
+snoopy_enabled: true
+snoopy_package_state: present
+snoopy_log_to_syslog: true
+snoopy_format: json
+snoopy_preload_path: '/lib/x86_64-linux-gnu/libsnoopy.so'
+snoopy_exclude_users: []
+snoopy_exclude_commands: []

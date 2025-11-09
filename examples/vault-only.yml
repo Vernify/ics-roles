@@ -1,0 +1,20 @@
+---
+# Example: Deploy Vault only with auto-init and auto-unseal
+# Assumes Docker network 'ci' exists
+
+- name: Deploy HashiCorp Vault
+  hosts: vault_hosts
+  become: true
+  roles:
+    - role: vault
+      vars:
+        vault_network_name: ci
+        vault_port: 8200
+        vault_cluster_port: 8201
+        # Enable auto-init/unseal for bulletproof reboots
+        vault_auto_init: true
+        vault_auto_unseal_enabled: true
+        vault_key_shares: 5
+        vault_key_threshold: 3
+        # Optional: enable TLS later
+        # vault_tls_disable: false
