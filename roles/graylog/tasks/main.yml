@@ -52,6 +52,7 @@
         - "{{ graylog_volumes_root }}/opensearch/data"
       loop_control:
         loop_var: graylog_data_dir_item
+      tags: [monitoring, graylog, reset]
 
 - name: Assert Graylog secrets are provided
   ansible.builtin.assert:
@@ -60,46 +61,43 @@
       - graylog_root_password_sha2 | length == 64
     fail_msg: "graylog_password_secret and graylog_root_password_sha2 must be set (use Ansible Vault/Hashicorp Vault)."
   tags: [monitoring, graylog]
-  
-# Host UID sanity checks: warn if the numeric UIDs used by containers map to unexpected
-# host users. When host paths are bind-mounted into containers, file ownership is
-# represented by numeric UID/GID on the host. It's normal for a container that runs
-# as UID 999 to show a host user (e.g., dnsmasq) owning the directory; this is a
-# mapping artifact. We warn so operators can decide whether to switch to named
-# volumes or reconcile host UIDs.
+
 - name: Check host mapping for MongoDB UID
   ansible.builtin.command:
-    cmd: "getent passwd {{ graylog_mongo_user_id }}"
-    warn: false
-  register: mongo_uid_map
+    argv:
+      - getent
+      - passwd
+      - "{{ graylog_mongo_user_id }}"
+  register: graylog_mongo_uid_map
   changed_when: false
+  failed_when: false
   tags: [monitoring, graylog]
 
 - name: Warn if MongoDB UID maps to a non-root host user
   ansible.builtin.debug:
     msg: |
       The MongoDB container runs as UID/GID {{ graylog_mongo_user_id }}/{{ graylog_mongo_group_id }}.
-      On this host that numeric UID maps to: {{ mongo_uid_map.stdout | default('no entry') }}.
+      On this host that numeric UID maps to: {{ graylog_mongo_uid_map.stdout | default('no entry') }}.
       If this user is unexpected (for example dnsmasq), consider using Docker named volumes
       or adjusting ownership. This is informational only.
-  when: mongo_uid_map.stdout is defined and mongo_uid_map.stdout != ''
-  tags: [monitoring, graylog]
-
 - name: Check host mapping for OpenSearch UID
   ansible.builtin.command:
-    cmd: "getent passwd {{ graylog_opensearch_user_id }}"
-    warn: false
-  register: opensearch_uid_map
+    argv:
+      - getent
+      - passwd
+      - "{{ graylog_opensearch_user_id }}"
+  register: graylog_opensearch_uid_map
   changed_when: false
+  failed_when: false
   tags: [monitoring, graylog]
 
 - name: Warn if OpenSearch UID maps to a non-root host user
   ansible.builtin.debug:
     msg: |
       The OpenSearch container runs as UID/GID {{ graylog_opensearch_user_id }}/{{ graylog_opensearch_group_id }}.
-      On this host that numeric UID maps to: {{ opensearch_uid_map.stdout | default('no entry') }}.
+      On this host that numeric UID maps to: {{ graylog_opensearch_uid_map.stdout | default('no entry') }}.
       If this user is unexpected, consider using Docker named volumes or adjusting ownership.
-  when: opensearch_uid_map.stdout is defined and opensearch_uid_map.stdout != ''
+  when: graylog_opensearch_uid_map.stdout is defined and graylog_opensearch_uid_map.stdout != ''
   tags: [monitoring, graylog]
 
 - name: Ensure MongoDB data directory exists with correct ownership
@@ -206,9 +204,16 @@
     - "restart monitoring proxy"
 
 - name: Wait for OpenSearch API to become ready
-  ansible.builtin.command: >-
-    docker exec {{ graylog_opensearch_container_name }}
-    curl -sSf http://localhost:9200 -o /dev/null
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ graylog_opensearch_container_name }}"
+      - curl
+      - -sSf
+      - http://localhost:9200
+      - -o
+      - /dev/null
   register: graylog_opensearch_ready
   retries: 30
   delay: 5
@@ -216,13 +221,12 @@
   until: graylog_opensearch_ready.rc == 0
   tags: [monitoring, graylog]
 
-- name: Pre-pull Graylog image if missing
+- name: Pull Graylog image
   community.docker.docker_image:
     name: "{{ graylog_image }}"
     source: pull
   tags: [monitoring, graylog]
   register: graylog_image_pull_result
-  # fail early if image cannot be pulled so the operator sees the problem before container start
   failed_when: graylog_image_pull_result is failed
 
 - name: Ensure Graylog container is running
