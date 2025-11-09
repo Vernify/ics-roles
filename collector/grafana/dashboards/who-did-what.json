@@ -1,0 +1,73 @@
+{
+  "dashboard": {
+    "title": "Who did what and when (provisioned)",
+    "uid": "who-did-what-provisioned",
+    "schemaVersion": 29,
+    "version": 1,
+    "time": { "from": "now-6h", "to": "now" },
+    "panels": [
+      {
+        "id": 1,
+        "type": "timeseries",
+        "title": "Snoopy Commands Over Time",
+        "datasource": { "type": "opensearch", "uid": "opensearch_graylog" },
+        "targets": [
+          {
+            "refId": "A",
+            "query": "app:snoopy",
+            "timeField": "timestamp",
+            "metrics": [ { "id": "1", "type": "count" } ],
+            "bucketAggs": [ { "id": "2", "type": "date_histogram", "field": "timestamp", "settings": { "interval": "auto" } } ]
+          }
+        ],
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 }
+      },
+      {
+        "id": 2,
+        "type": "table",
+        "title": "Sessions (sid) summary",
+        "datasource": { "type": "opensearch", "uid": "opensearch_graylog" },
+        "targets": [
+          {
+            "refId": "A",
+            "query": "app:snoopy",
+            "timeField": "timestamp",
+            "metrics": [
+              { "id": "1", "type": "count" },
+              { "id": "2", "type": "min", "field": "timestamp" },
+              { "id": "3", "type": "max", "field": "timestamp" }
+            ],
+            "bucketAggs": [
+              { "id": "4", "type": "terms", "field": "sid", "settings": { "size": 50 } },
+              { "id": "5", "type": "terms", "field": "user", "settings": { "size": 10 } }
+            ]
+          }
+        ],
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "type": "query",
+          "name": "Username",
+          "label": "Username",
+          "datasource": { "type": "opensearch", "uid": "opensearch_graylog" },
+          "query": "{\"find\": \"terms\", \"field\": \"user\"}",
+          "refresh": 2,
+          "includeAll": true
+        },
+        {
+          "type": "query",
+          "name": "SessionID",
+          "label": "SessionID",
+          "datasource": { "type": "opensearch", "uid": "opensearch_graylog" },
+          "query": "{\"find\": \"terms\", \"field\": \"sid\"}",
+          "refresh": 2,
+          "includeAll": true
+        }
+      ]
+    }
+  },
+  "overwrite": true
+}

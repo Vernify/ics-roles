@@ -1,0 +1,5 @@
+{
+  "title": "snoopy_extract_sid_tty",
+  "description": "Extract session id (sid) and tty from snoopy messages so they become indexed fields for sessionization.",
+  "source": "rule \"snoopy_extract_sid_tty\"\nwhen\n  has_field(\"app\") && to_string($message.app) == \"snoopy\"\nthen\n  let msg = to_string($message.message);\n  let sid_match = regex(\"sid:([0-9]+)\", msg);\n  set_field(\"sid\", sid_match[\"0\"]);\n  let tty_match = regex(\"tty:([^\\\\s]+)\", msg);\n  set_field(\"tty\", tty_match[\"0\"]);\nend\n"
+}

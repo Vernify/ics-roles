@@ -1,0 +1,22 @@
+[SERVICE]
+    Flush        1
+    Log_Level    info
+    Parsers_File parsers.conf
+
+[INPUT]
+    Name   tail
+    Path   /var/log/*.log
+    Tag    host.logs
+
+[FILTER]
+    Name   record_modifier
+    Match  *
+    Record environment {{ fluentbit_extra_fields.environment }}
+    Record service {{ fluentbit_extra_fields.service }}
+
+[OUTPUT]
+    Name  gelf
+    Match *
+    Host  {{ fluentbit_output_host }}
+    Port  {{ fluentbit_output_port }}
+    Mode  {{ fluentbit_output_mode }}
