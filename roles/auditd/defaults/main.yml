@@ -13,58 +13,14 @@ auditd_flush: 'data'
 # Safer default: do not make rules immutable by default; operators can opt-in
 auditd_immutable_rules: false
 
-# By default, forward audit.log to the local syslog for pipeline ingestion
-# Set to false to manage forwarding elsewhere
-auditd_forward_to_rsyslog: true
+# Rsyslog forwarding configuration
 auditd_rsyslog_conf_path: /etc/rsyslog.d/50-audit.conf
 auditd_rsyslog_tag: auditd
 auditd_rsyslog_facility: local6
 
-# Fluent Bit forwarding options (used when auditd_forward_method == 'fluentbit')
-auditd_forward_to_fluentbit: true
-auditd_fluentbit_conf_path: /etc/fluent-bit/conf.d/50-audit.conf
-auditd_fluentbit_tag: auditd
-
 # Manage installation and service by default
 auditd_manage_packages: true
 auditd_manage_services: true
-auditd_forward_method: 'rsyslog'
-
-# Per-distribution/package/service mapping for Fluent Bit
-# The role will pick the appropriate package/service name for the target OS
-auditd_fluentbit_package_default: fluent-bit
-auditd_fluentbit_service_default: fluent-bit
-
-# Map by ansible_facts['os_family'] (Debian/RedHat/etc). Values are used
-# by the role tasks via a set_fact so runtime facts determine the right names.
-auditd_fluentbit_package_map:
-  Debian:
-    package: fluent-bit
-    service: fluent-bit
-  RedHat:
-    # On some RHEL/CentOS/Fedora distributions the td-agent-bit package is
-    # distributed by Treasure Data; prefer it as a fallback for RedHat-family.
-    package: td-agent-bit
-    service: td-agent-bit
-  Suse:
-    package: td-agent-bit
-    service: td-agent-bit
-  default:
-    package: "{{ auditd_fluentbit_package_default }}"
-    service: "{{ auditd_fluentbit_service_default }}"
-
-# Fluent Bit fallback/install helpers
-# When upstream apt repo fails (missing Release or packages), allow the role
-# to fallback to downloading the official GitHub release .deb for amd64 and
-# install it. This keeps installations reproducible while still preferring
-# the vendor apt repository.
-auditd_fluentbit_fallback_to_github: true
-# If you prefer to pin a specific .deb URL instead of probing GitHub, set
-# `auditd_fluentbit_deb_url` to a fully-qualified download URL and the role
-# will use that instead of GitHub discovery.
-auditd_fluentbit_deb_url: ''
-# GitHub repo to query for releases when fallback is enabled
-auditd_fluentbit_github_repo: 'fluent/fluent-bit'
 
 # Define default audit rules as a list of name/rule pairs
 auditd_rules:

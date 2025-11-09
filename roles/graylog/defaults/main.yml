@@ -67,6 +67,10 @@ graylog_reset_data: false
 graylog_opensearch_user_id: 1000
 graylog_opensearch_group_id: 1000
 
+# MongoDB container user/group ids (mongo:7.0 runs as UID/GID 999)
+graylog_mongo_user_id: 999
+graylog_mongo_group_id: 999
+
 # Graylog root password (plain text for API auth)
 graylog_root_password_plain: "{{ lookup('env', 'GRAYLOG_ROOT_PASSWORD') | default('admin') }}"
 

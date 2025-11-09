@@ -1,7 +1,0 @@
----
-galaxy_info:
-  author: iotel
-  description: Generic Fluent Bit role (install/configure basic Fluent Bit)
-  license: MIT
-  min_ansible_version: "2.9"
-dependencies: []
