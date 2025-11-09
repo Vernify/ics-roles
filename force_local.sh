@@ -29,7 +29,11 @@ echo "[force_local] Installing artifact: $artifact"
 
 # Determine namespace and collection name from artifact filename (format: namespace-name-version.tar.gz)
 artifact_base="${artifact%.tar.gz}"
-IFS='-' read -r artifact_namespace artifact_name _rest <<<"$artifact_base"
+# Robustly parse namespace, name, and version from artifact filename
+artifact_version="${artifact_base##*-}"
+artifact_ns_name="${artifact_base%-${artifact_version}}"
+artifact_namespace="${artifact_ns_name%%-*}"
+artifact_name="${artifact_ns_name#*-}"
 
 # Candidate install paths to remove before installing to ensure a clean replacement
 repo_local_path="$ROOT_DIR/.ansible/collections/ansible_collections/${artifact_namespace}/${artifact_name}"
