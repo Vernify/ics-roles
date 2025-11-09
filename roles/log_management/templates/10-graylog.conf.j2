@@ -1,0 +1,22 @@
+# Preserve FQDN for accurate host identification
+$PreserveFQDN on
+
+# Default effective pid comes from procid; may be overridden by mmnormalize
+set $!pid_effective = $procid;
+
+# Try to extract PID from syslogtag without regex (future-proof):
+# For tags like program[1234]: extract the number between '[' and ']'
+if ($syslogtag contains "[") then {
+	set $!pid_effective = field($syslogtag, "[", 2);
+	set $!pid_effective = field($!pid_effective, "]", 1);
+	if ($!pid_effective == "" or $!pid_effective == "-") then {
+		set $!pid_effective = $procid;
+	}
+}
+
+# Stable template (no host-side regex extraction). Rely on %procid% and expose the full syslog tag.
+# Later host-side extraction can be added when regex functions are confirmed available.
+$template GELF,"{\"version\":\"1.1\",\"host\":\"%HOSTNAME%\",\"short_message\":\"%msg:::json%\",\"timestamp\":\"%timestamp:::date-unixtimestamp%\",\"level\":\"%syslogseverity%\",\"facility\":\"%syslogfacility-text%\",\"_tag\":\"%syslogtag%\",\"_syslogtag\":\"%syslogtag%\",\"_pid\":\"%$!pid_effective%\",\"_file\":\"%$!source_file%\",\"_action\":\"%$!action_human%\",\"_app\":\"%app-name%\",\"_environment\":\"{{ log_environment | default('unknown') }}\"}"
+
+# Forward all logs to Graylog via GELF over UDP
+*.* @{{ graylog_server }}:{{ graylog_gelf_port }};GELF

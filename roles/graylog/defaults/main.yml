@@ -95,7 +95,7 @@ graylog_inputs:
       recv_buffer_size: 262144
     global: true
 
-# Graylog API upload settings (for importing pipelines/dashboards/searches)
+# Graylog API upload settings (for importing pipelines)
 graylog_api_url: "http://graylog.{{ monitoring_domain }}"
 # Reuse root credentials to avoid duplication; override if different API user is required.
 graylog_api_user: "{{ (lookup('env','GRAYLOG_API_USER') | default('admin')) }}"
@@ -107,8 +107,6 @@ graylog_validate_certs: false
 graylog_artifacts:
   pipelines: "collector/graylog/pipelines"
   pipeline_definitions: "collector/graylog/pipelines_definitions"
-  dashboards: "collector/graylog/dashboards"
-  saved_searches: "collector/graylog/saved_searches"
 
 # Default stream ID to connect pipelines to (000000000000000000000001 = Default Stream)
 graylog_default_stream_id: "000000000000000000000001"

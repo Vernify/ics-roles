@@ -1,0 +1,47 @@
+---
+# Jenkins role defaults (prefixed with jenkins_*)
+
+# Container image and name
+jenkins_image: "jenkins/jenkins:lts-jdk17"
+jenkins_container_name: "jenkins"
+
+# Persistent data under /opt/docker_volumes
+jenkins_home_root: "/opt/docker_volumes/jenkins"
+jenkins_home: "{{ jenkins_home_root }}/home"
+
+# Ports
+jenkins_http_port: 8080
+jenkins_agent_port: 50000
+
+# Networking
+jenkins_network_name: "ci"
+
+# Resource limits (null means unset)
+jenkins_memory: null        # e.g., "4g"
+jenkins_cpus: null          # e.g., 2
+jenkins_shm_size: "1g"
+
+# User and permissions (Jenkins image runs uid/gid 1000 by default)
+jenkins_user_uid: 1000
+jenkins_user_gid: 1000
+
+# Optional: enable Docker socket mount for builds
+jenkins_enable_docker: false
+jenkins_docker_socket: "/var/run/docker.sock"
+
+# Extra volumes and environment
+jenkins_extra_volumes: []   # list of "host_path:container_path[:options]"
+jenkins_env: {}
+
+# Restart policy
+jenkins_restart_policy: "unless-stopped"
+
+# Healthcheck (basic HTTP head against /login)
+jenkins_healthcheck:
+  test: ["CMD", "bash", "-lc", "curl -fsS http://localhost:8080/login >/dev/null"]
+  interval: 30s
+  timeout: 10s
+  retries: 5
+  start_period: 30s
+
+...

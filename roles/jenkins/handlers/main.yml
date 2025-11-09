@@ -1,0 +1,8 @@
+---
+
+- name: Restart Jenkins
+  community.docker.docker_container:
+    name: "{{ jenkins_container_name }}"
+    state: started
+    restart: true
+  tags: [jenkins]

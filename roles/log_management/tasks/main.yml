@@ -1,0 +1,103 @@
+---
+- name: Optionally manage main rsyslog.conf on Debian/Ubuntu
+  ansible.builtin.template:
+    src: rsyslog.conf.debian.j2
+    dest: /etc/rsyslog.conf
+    mode: '0644'
+    owner: root
+    group: root
+    backup: true
+  when:
+    - (log_management_manage_rsyslog_conf | default(true) | bool)
+    - ansible_facts['os_family'] | lower == 'debian'
+  notify: Restart rsyslog
+  tags:
+    - logs
+    - monitoring
+
+- name: Configure rsyslog to forward logs to Graylog in GELF format
+  ansible.builtin.template:
+    src: 10-graylog.conf.j2
+    dest: /etc/rsyslog.d/10-graylog.conf
+    mode: '0644'
+    owner: root
+    group: root
+  notify: Restart rsyslog
+
+# Remove legacy rate limit directive that breaks rsyslog validation
+- name: Remove legacy SystemLogRateLimitInterval directive if present
+  ansible.builtin.lineinfile:
+    path: /etc/rsyslog.conf
+    regexp: '^[[:space:]]*\\$SystemLogRateLimitInterval'
+    state: absent
+  notify: Restart rsyslog
+  tags:
+    - logs
+    - monitoring
+
+- name: Comment out legacy SystemLogRateLimitInterval directive if direct removal fails
+  ansible.builtin.replace:
+    path: /etc/rsyslog.conf
+    regexp: '^([[:space:]]*\\$SystemLogRateLimitInterval.*)$'
+    replace: '# Disabled by log_management role: \1'
+  when: ansible_facts['distribution'] is defined
+  notify: Restart rsyslog
+  tags:
+    - logs
+    - monitoring
+
+- name: Forcefully remove legacy SystemLogRateLimitInterval directive (fallback)
+  ansible.builtin.replace:
+    path: /etc/rsyslog.conf
+    regexp: '^[[:space:]]*\\$SystemLogRateLimitInterval\\b.*$'
+    replace: ''
+  notify: Restart rsyslog
+  tags:
+    - logs
+    - monitoring
+
+- name: Find rsyslog drop-in config files
+  ansible.builtin.find:
+    paths: /etc/rsyslog.d
+    patterns: "*.conf"
+    file_type: file
+  register: log_management_rsyslog_dropins
+  tags:
+    - logs
+    - monitoring
+
+- name: Remove legacy SystemLogRateLimitInterval from drop-in configs
+  ansible.builtin.lineinfile:
+    path: "{{ log_management_item.path }}"
+    regexp: '^\\$SystemLogRateLimitInterval'
+    state: absent
+  loop: "{{ log_management_rsyslog_dropins.files | default([]) }}"
+  loop_control:
+    label: "{{ log_management_item.path }}"
+    loop_var: log_management_item
+  notify: Restart rsyslog
+  tags:
+    - logs
+    - monitoring
+
+- name: Install rsyslog-gnutls for TLS support (optional)
+  ansible.builtin.apt:
+    name: rsyslog-gnutls
+    state: present
+  when: log_tls_enabled
+
+- name: Configure TLS forwarding to Graylog (optional)
+  ansible.builtin.copy:
+    dest: /etc/rsyslog.d/11-graylog-tls.conf
+    content: |
+      # TLS configuration for secure log forwarding
+      $DefaultNetstreamDriver gtls
+      $DefaultNetstreamDriverCAFile /etc/ssl/certs/ca-certificates.crt
+      $ActionSendStreamDriverAuthMode x509/name
+      $ActionSendStreamDriverPermittedPeer {{ graylog_server }}
+      *.* @@{{ graylog_server }}:1514;GRAYLOGRFC5424
+    mode: '0644'
+    owner: root
+    group: root
+  when: log_tls_enabled
+  notify: Restart rsyslog

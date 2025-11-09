@@ -1,0 +1,20 @@
+ui = true
+disable_mlock = true
+
+storage "file" {
+  path = "{{ vault_file_storage_path }}"
+}
+
+listener "tcp" {
+  address     = "0.0.0.0:{{ vault_port }}"
+  tls_disable = {{ 1 if vault_tls_disable | bool else 0 }}
+  # To enable TLS in future:
+  # tls_cert_file = "/vault/certs/vault.crt"
+  # tls_key_file  = "/vault/certs/vault.key"
+}
+
+api_addr     = "{{ vault_api_addr }}"
+cluster_addr = "{{ vault_cluster_addr }}"
+
+log_level  = "INFO"
+log_format = "json"

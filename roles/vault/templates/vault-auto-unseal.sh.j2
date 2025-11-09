@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VAULT_ADDR="{{ vault_api_addr }}"
+KEYS_FILE="{{ vault_unseal_keys_file }}"
+THRESHOLD={{ vault_key_threshold | int }}
+
+log(){ echo "[vault-auto-unseal] $*"; }
+
+if ! command -v curl >/dev/null 2>&1; then
+  log "curl is required"
+  exit 1
+fi
+
+if [[ ! -f "$KEYS_FILE" ]]; then
+  log "Unseal keys file not found: $KEYS_FILE"
+  exit 0
+fi
+
+status_code=$(curl -s -o /dev/null -w "%{http_code}" "$VAULT_ADDR/v1/sys/health" || true)
+if [[ "$status_code" == "200" || "$status_code" == "429" ]]; then
+  log "Vault already initialized and unsealed (status $status_code)"
+  exit 0
+fi
+
+mapfile -t KEYS < "$KEYS_FILE"
+
+for ((i=0; i<THRESHOLD; i++)); do
+  key="${KEYS[i]:-}"
+  if [[ -z "$key" ]]; then
+    log "Missing key $((i+1)) in $KEYS_FILE"; exit 1
+  fi
+  log "Applying unseal key $((i+1))/$THRESHOLD"
+  curl -s -X POST -H 'Content-Type: application/json' \
+    --data "{\"key\":\"$key\"}" \
+    "$VAULT_ADDR/v1/sys/unseal" >/dev/null
+  sleep 1
+done
+
+final=$(curl -s "$VAULT_ADDR/v1/sys/health" | tr -d '\n')
+log "Final health: $final"
+exit 0

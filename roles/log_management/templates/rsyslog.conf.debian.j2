@@ -1,0 +1,52 @@
+# /etc/rsyslog.conf - managed by Ansible (ics.common.log_management)
+# This template intentionally avoids legacy v5-only directives like
+# $SystemLogRateLimitInterval which are not permitted with RainerScript (v6+) configs.
+# It preserves distro defaults and includes drop-in snippets from /etc/rsyslog.d/.
+
+# File and directory creation defaults
+$FileOwner syslog
+$FileGroup adm
+$FileCreateMode 0640
+$DirCreateMode 0755
+$Umask 0022
+$PrivDropToUser syslog
+$PrivDropToGroup syslog
+
+# Where to place spool and state files
+$WorkDirectory /var/spool/rsyslog
+
+# Load message reception modules (kept minimal; drop-ins may load more)
+$ModLoad imuxsock   # local system logging via /dev/log
+$ModLoad imklog     # kernel logging (optional; harmless if already loaded elsewhere)
+
+{% if log_management_enable_imudp %}
+# UDP input (enabled by role variable)
+module(load="imudp")
+input(type="imudp" port="{{ log_management_imudp_port }}")
+{% endif %}
+
+{% if log_management_enable_imtcp %}
+# TCP input (enabled by role variable)
+module(load="imtcp")
+input(type="imtcp" port="{{ log_management_imtcp_port }}")
+{% endif %}
+
+{% if log_management_rate_limit_rainerscript %}
+# Custom rate limiting snippet (provided by role variable)
+{{ log_management_rate_limit_rainerscript }}
+{% elif log_management_enable_rate_limit %}
+# Rate limiting requested but no custom snippet supplied.
+# You can provide `log_management_rate_limit_rainerscript` to insert
+# modern RainerScript rate limiting. Example (commented):
+#
+# # Example modern RainerScript snippet (edit before enabling):
+# ruleset(name="limit") {
+#   action(type="omfile" file="/var/log/limited.log" queue.type="LinkedList")
+# }
+#
+# Note: don't enable legacy `$SystemLogRateLimitInterval` here; it is
+# incompatible with RainerScript-based configs.
+{% endif %}
+
+# Include all additional configuration snippets
+$IncludeConfig /etc/rsyslog.d/*.conf

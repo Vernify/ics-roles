@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: iotel
+  description: Generic auditd role (install/configure auditd and rules)
+  license: MIT
+  min_ansible_version: "2.9"
+dependencies: []

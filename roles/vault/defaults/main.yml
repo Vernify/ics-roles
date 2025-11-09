@@ -1,0 +1,49 @@
+---
+# Vault role defaults (prefixed with vault_*)
+
+vault_image: "hashicorp/vault:1.18.2"
+vault_container_name: "vault"
+
+# Persistent data root
+vault_root: "/opt/docker_volumes/vault"
+vault_data_dir: "{{ vault_root }}/data"
+vault_config_dir: "{{ vault_root }}/config"
+vault_logs_dir: "{{ vault_root }}/logs"
+
+# Networking
+vault_network_name: "ci"
+vault_port: 8200
+vault_cluster_port: 8201
+
+# Addresses (advertise host IP by default)
+vault_api_addr: "http://{{ ansible_default_ipv4.address }}:{{ vault_port }}"
+vault_cluster_addr: "http://{{ ansible_default_ipv4.address }}:{{ vault_cluster_port }}"
+
+# Config
+vault_tls_disable: true
+vault_file_storage_path: "/vault/data"
+
+# Container options
+vault_restart_policy: "unless-stopped"
+vault_env: {}
+
+# Security/ownership (Vault container uses uid 100 by default)
+vault_owner: 100
+vault_group: 1000
+vault_dir_mode: "0750"
+vault_file_mode: "0640"
+
+# Initialization and auto-unseal (enabled per request)
+vault_auto_init: true
+vault_key_shares: 5
+vault_key_threshold: 3
+
+# Persisted initialization artifacts (sensitive)
+vault_init_file: "{{ vault_config_dir }}/vault_init.json"
+vault_unseal_keys_file: "{{ vault_config_dir }}/unseal_keys.txt"
+vault_root_token_file: "{{ vault_config_dir }}/root_token.txt"
+
+# Auto-unseal at boot using saved keys (stopgap until KMS/HSM)
+vault_auto_unseal_enabled: true
+
+...
