@@ -1,6 +1,6 @@
 ---
 # Defaults for Fluent Bit role
-fluentbit_enabled: false
+fluentbit_enabled: true
 fluentbit_package_name: fluent-bit
 fluentbit_output_host: '<collector_host>'
 fluentbit_output_port: 12201
