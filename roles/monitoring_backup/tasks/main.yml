@@ -1,0 +1,110 @@
+---
+# Monitoring Backup Role - Main Tasks
+
+- name: Create backup base directory
+  ansible.builtin.file:
+    path: "{{ monitoring_backup_base_dir }}"
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Create backup retention directories
+  ansible.builtin.file:
+    path: "{{ monitoring_backup_base_dir }}/{{ monitoring_backup_outer_item.0 }}/{{ monitoring_backup_outer_item.1 }}"
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+  loop: "{{ monitoring_backup_enabled_services | product(['daily', 'weekly', 'monthly']) | list }}"
+  loop_control:
+    loop_var: monitoring_backup_outer_item
+    label: "{{ monitoring_backup_outer_item.0 }}/{{ monitoring_backup_outer_item.1 }}"
+  vars:
+    monitoring_backup_enabled_services: >-
+      {{
+        (['grafana'] if monitoring_backup_grafana_enabled else []) +
+        (['graylog'] if monitoring_backup_graylog_enabled else [])
+      }}
+
+- name: Create log directory
+  ansible.builtin.file:
+    path: "{{ monitoring_backup_log_dir }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Generate encryption key if encryption is enabled
+  ansible.builtin.shell: openssl rand -base64 32 > {{ monitoring_backup_encryption_key_file }}
+  args:
+    creates: "{{ monitoring_backup_encryption_key_file }}"
+  when: monitoring_backup_encryption_enabled
+  changed_when: false
+
+- name: Set encryption key file permissions
+  ansible.builtin.file:
+    path: "{{ monitoring_backup_encryption_key_file }}"
+    mode: '0600'
+    owner: root
+    group: root
+  when: monitoring_backup_encryption_enabled
+
+- name: Deploy backup scripts
+  ansible.builtin.template:
+    src: "{{ monitoring_backup_script_item.src }}"
+    dest: "{{ monitoring_backup_script_item.dest }}"
+    mode: '0750'
+    owner: root
+    group: root
+  loop:
+    - {src: 'grafana_backup.sh.j2', dest: '/usr/local/bin/grafana_backup.sh', condition: "{{ monitoring_backup_grafana_enabled }}"}
+    - {src: 'graylog_backup.sh.j2', dest: '/usr/local/bin/graylog_backup.sh', condition: "{{ monitoring_backup_graylog_enabled }}"}
+    - {src: 'backup_cleanup.sh.j2', dest: '/usr/local/bin/monitoring_backup_cleanup.sh', condition: true}
+    - {src: 'backup_verify.sh.j2', dest: '/usr/local/bin/monitoring_backup_verify.sh', condition: "{{ monitoring_backup_verify_enabled }}"}
+    - {src: 'backup_restore.sh.j2', dest: '/usr/local/bin/monitoring_backup_restore.sh', condition: true}
+    - {src: 'backup_monitor.sh.j2', dest: '/usr/local/bin/monitoring_backup_monitor.sh', condition: true}
+    - {src: 'backup_and_sync.sh.j2', dest: '/usr/local/bin/monitoring_backup_wrapper.sh', condition: true}
+  loop_control:
+    loop_var: monitoring_backup_script_item
+    label: "{{ monitoring_backup_script_item.dest }}"
+  when: monitoring_backup_script_item.condition
+
+- name: Configure backup wrapper cron job
+  ansible.builtin.cron:
+    name: "Monitoring backup wrapper"
+    minute: "{{ monitoring_backup_schedule_wrapper.split()[0] }}"
+    hour: "{{ monitoring_backup_schedule_wrapper.split()[1] }}"
+    day: "{{ monitoring_backup_schedule_wrapper.split()[2] }}"
+    month: "{{ monitoring_backup_schedule_wrapper.split()[3] }}"
+    weekday: "{{ monitoring_backup_schedule_wrapper.split()[4] }}"
+    job: "/usr/local/bin/monitoring_backup_wrapper.sh >> {{ monitoring_backup_log_dir }}/wrapper.log 2>&1"
+    user: root
+  when: monitoring_backup_enabled
+
+- name: Configure backup monitoring cron job
+  ansible.builtin.cron:
+    name: "Monitoring backup health check"
+    minute: "{{ monitoring_backup_schedule_monitor.split()[0] }}"
+    hour: "{{ monitoring_backup_schedule_monitor.split()[1] }}"
+    day: "{{ monitoring_backup_schedule_monitor.split()[2] }}"
+    month: "{{ monitoring_backup_schedule_monitor.split()[3] }}"
+    weekday: "{{ monitoring_backup_schedule_monitor.split()[4] }}"
+    job: "/usr/local/bin/monitoring_backup_monitor.sh >> {{ monitoring_backup_log_dir }}/monitor.log 2>&1"
+    user: root
+  when: monitoring_backup_enabled
+
+- name: Configure logrotate for backup logs
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/monitoring_backups
+    mode: '0644'
+    content: |
+      {{ monitoring_backup_log_dir }}/*.log {
+          daily
+          rotate {{ monitoring_backup_logrotate_retention }}
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0644 root root
+      }

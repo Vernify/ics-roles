@@ -18,22 +18,14 @@ The `ics.common` collection provides standardized infrastructure automation comp
 ## Collection Structure
 
 ```
-ics/
-├── common/
-│   ├── galaxy.yml               # Collection metadata
-│   ├── requirements.yml         # Collection dependencies
-│   ├── README.md                # This file
-│   ├── architecture/            # LADR documentation
-│   ├── collector/               # Artifact templates (Graylog pipelines, etc.)
-│   ├── examples/                # Example playbooks
-│   └── roles/                   # Ansible roles
-│       ├── linux_base/
-│       ├── user_management/
-│       ├── monitoring_common/
-│       ├── monitoring_proxy/
-│       ├── graphite/
-│       ├── grafana/
-│       └── graylog/
+ics-roles/
+├── galaxy.yml               # Collection metadata
+├── requirements.yml         # Collection dependencies
+├── README.md                # This file
+├── architecture/            # LADR documentation
+├── collector/               # Artifact templates (Graylog pipelines, Grafana dashboards)
+├── examples/                # Example playbooks
+└── roles/                   # Ansible roles (see Available Roles section)
 ```
 
 ## Documentation
@@ -106,9 +98,10 @@ ansible-galaxy collection install -r requirements.yml
 ## Available Roles
 
 ### Core Infrastructure
-- **linux_base** - Base OS configuration
 - **user_management** - User/group management with custom sudo rules
-- **security_hardening** - DevSec hardening standards
+- **auditd** - Auditd configuration for security logging
+- **snoopy** - Snoopy command logging
+- **docker_setup** - Docker engine installation and configuration
 
 ### Monitoring Stack (v2.0.0+)
 - **monitoring_common** - Docker engine, sysctl, network setup
@@ -116,11 +109,19 @@ ansible-galaxy collection install -r requirements.yml
 - **graphite** - Graphite with StatsD
 - **grafana** - Grafana with persistent storage
 - **graylog** - Graylog 7.x with MongoDB 7.0 and OpenSearch
+- **telegraf_base** - Telegraf monitoring agent (cross-platform)
+- **fluentbit** - Fluent Bit log forwarding
+- **monitoring_backup** - Automated backup for Grafana and Graylog
 
-### Additional Roles
-- **monitoring_agent** - Telegraf, log forwarding
-- **backup_client** - Backup scheduling and retention
-- **web_server** - Nginx/Apache configuration
+### Infrastructure Services
+- **jenkins** - Jenkins CI/CD server
+- **vault** - HashiCorp Vault deployment
+- **log_management** - Log aggregation configuration
+
+### Utilities
+- **linux_lvm_resize** - LVM partition and volume management
+- **storage_grow_pv** - Physical volume growth automation
+- **system_review** - System audit and review utilities
 
 See individual role README files for detailed configuration options.
 
@@ -167,7 +168,7 @@ ansible-galaxy collection install ics-common-*.tar.gz --force
 
 ## Versioning
 
-Follows semantic versioning (MAJOR.MINOR.PATCH). Current version: 2.0.0
+Follows semantic versioning (MAJOR.MINOR.PATCH). Current version: 3.1.0
 
 ## License
 

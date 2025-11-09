@@ -37,9 +37,6 @@ Other options that were considered and why they were not chosen.
 ## Current ADRs
 
 - [LADR-001: Collection Structure](001-collection-structure.md)
-- [LADR-002: Variable Naming Conventions](002-variable-naming.md)
-- [LADR-003: Multi-OS Support Strategy](003-multi-os-support.md)
-- [LADR-004: Secret Management Integration](004-secret-management.md)
 
 ## Guidelines
 

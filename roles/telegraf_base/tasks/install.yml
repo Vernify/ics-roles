@@ -5,28 +5,29 @@
     - name: Check if influx apt key exists
       ansible.builtin.stat:
         path: /etc/apt/trusted.gpg.d/influxdata-archive_compat.gpg
-      register: influx_key
+      register: telegraf_base_influx_key
 
     - name: Fetch InfluxDB GPG key (try uri, fallback to curl)
+      when: not telegraf_base_influx_key.stat.exists
       block:
         - name: Attempt to fetch key using ansible.builtin.uri
           ansible.builtin.uri:
             url: https://repos.influxdata.com/influxdata-archive_compat.key
-            return_content: yes
-            validate_certs: yes
-          register: influx_key_resp
+            return_content: true
+            validate_certs: true
+          register: telegraf_base_influx_key_resp
 
         - name: Write key content to file
           ansible.builtin.copy:
-            content: "{{ influx_key_resp.content }}"
+            content: "{{ telegraf_base_influx_key_resp.content }}"
             dest: /tmp/influxdata-archive_compat.key
             mode: '0644'
       rescue:
-        - name: Fallback - fetch key using curl
-          ansible.builtin.command: curl -fsSL -o /tmp/influxdata-archive_compat.key https://repos.influxdata.com/influxdata-archive_compat.key
-          args:
-            creates: /tmp/influxdata-archive_compat.key
-      when: not influx_key.stat.exists
+        - name: Fallback - fetch key using get_url
+          ansible.builtin.get_url:
+            url: https://repos.influxdata.com/influxdata-archive_compat.key
+            dest: /tmp/influxdata-archive_compat.key
+            mode: '0644'
 
     - name: Install the Apt key if not present
       ansible.builtin.shell:
@@ -37,7 +38,7 @@
         chdir: /tmp
         executable: /bin/bash
       changed_when: true
-      when: not influx_key.stat.exists
+      when: not telegraf_base_influx_key.stat.exists
 
     - name: Ensure the influxDB repo exists
       ansible.builtin.apt_repository:

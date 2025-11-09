@@ -1,0 +1,3 @@
+---
+# Monitoring Backup Role - Handlers
+# Note: Backups run on schedule via cron. No handlers required.

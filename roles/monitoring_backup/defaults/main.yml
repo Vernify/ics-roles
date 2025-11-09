@@ -1,0 +1,61 @@
+---
+# Monitoring Backup Role - Default Variables
+
+# Enable or disable backups
+monitoring_backup_enabled: true
+
+# Base directory for all backups
+monitoring_backup_base_dir: "/opt/backups"
+
+# Retention policies (in days)
+monitoring_backup_retention_days: 7
+monitoring_backup_retention_weeks: 4
+monitoring_backup_retention_months: 2
+
+# Backup scheduling (cron format)
+monitoring_backup_schedule_wrapper: "0 1 * * *"  # Daily at 1 AM
+monitoring_backup_schedule_monitor: "0 10 * * *"  # Daily at 10 AM
+
+# Compression
+monitoring_backup_compression: true
+
+# Encryption
+monitoring_backup_encryption_enabled: false
+monitoring_backup_encryption_key_file: "/opt/backups/.encryption_key"
+
+# Grafana configuration
+monitoring_backup_grafana_enabled: true
+monitoring_backup_grafana_api_url: "http://localhost:3000"
+monitoring_backup_grafana_api_key: ""  # Store in vault
+monitoring_backup_grafana_config_dir: "/etc/grafana"
+monitoring_backup_grafana_data_dir: "/var/lib/grafana"
+monitoring_backup_grafana_db_enabled: false
+monitoring_backup_grafana_db_type: "sqlite3"  # sqlite3 or postgres
+monitoring_backup_grafana_db_path: "/var/lib/grafana/grafana.db"
+monitoring_backup_grafana_pg_host: "localhost"
+monitoring_backup_grafana_pg_port: 5432
+monitoring_backup_grafana_pg_database: "grafana"
+monitoring_backup_grafana_pg_user: "grafana"
+monitoring_backup_grafana_pg_password: ""  # Store in vault
+
+# Graylog configuration
+monitoring_backup_graylog_enabled: true
+monitoring_backup_graylog_opensearch_url: "http://localhost:9200"
+monitoring_backup_graylog_opensearch_username: "admin"
+monitoring_backup_graylog_opensearch_password: ""  # Store in vault
+monitoring_backup_graylog_opensearch_repository: "graylog_backup"
+monitoring_backup_graylog_opensearch_snapshot_location: "/mnt/opensearch_backups"
+monitoring_backup_graylog_mongo_host: "localhost"
+monitoring_backup_graylog_mongo_port: 27017
+monitoring_backup_graylog_mongo_database: "graylog"
+monitoring_backup_graylog_mongo_username: "grayloguser"
+monitoring_backup_graylog_mongo_password: ""  # Store in vault
+monitoring_backup_graylog_mongo_auth_database: "admin"
+
+# Verification settings
+monitoring_backup_verify_enabled: true
+monitoring_backup_verify_fail_on_error: true
+
+# Log settings
+monitoring_backup_log_dir: "/var/log/backups"
+monitoring_backup_logrotate_retention: 30

@@ -1,0 +1,58 @@
+---
+# Process a single saved search artifact referred by graylog_item
+- name: Read saved search JSON
+  ansible.builtin.set_fact:
+    graylog_search_json: "{{ lookup('file', graylog_item.path) | from_json }}"
+
+- name: Attempt to create saved search (POST)
+  ansible.builtin.uri:
+    url: "{{ graylog_api_base }}/api/search/universal/saved"
+    method: POST
+    headers: "{{ graylog_api_headers }}"
+    user: "{{ graylog_api_auth_user if graylog_api_auth_user | length > 0 else omit }}"
+    password: "{{ graylog_api_auth_pass if graylog_api_auth_pass | length > 0 else omit }}"
+    force_basic_auth: "{{ (graylog_api_auth_user | length > 0) | bool }}"
+    validate_certs: "{{ graylog_validate_certs }}"
+    body_format: json
+    body: "{{ graylog_search_json }}"
+    return_content: true
+  register: graylog_search_post
+  failed_when: false
+  no_log: true
+
+- name: If saved-search POST failed, fetch existing saved searches
+  ansible.builtin.uri:
+    url: "{{ graylog_api_base }}/api/search/universal/saved"
+    method: GET
+    headers: "{{ graylog_api_headers }}"
+    user: "{{ graylog_api_auth_user if graylog_api_auth_user | length > 0 else omit }}"
+    password: "{{ graylog_api_auth_pass if graylog_api_auth_pass | length > 0 else omit }}"
+    force_basic_auth: "{{ (graylog_api_auth_user | length > 0) | bool }}"
+    validate_certs: "{{ graylog_validate_certs }}"
+    return_content: true
+  register: graylog_existing_searches
+  when: graylog_search_post.status not in [200,201]
+  no_log: true
+
+- name: Find existing saved search by title
+  ansible.builtin.set_fact:
+    graylog_existing_search: >-
+      {{ (graylog_existing_searches.json | default([])) | selectattr('title', 'equalto', graylog_search_json.title) | list | first | default({}) }}
+  when: graylog_existing_searches is defined
+
+- name: Update saved search when existing (PUT)
+  ansible.builtin.uri:
+    url: "{{ graylog_api_base }}/api/search/universal/saved/{{ graylog_existing_search.id }}"
+    method: PUT
+    headers: "{{ graylog_api_headers }}"
+    user: "{{ graylog_api_auth_user if graylog_api_auth_user | length > 0 else omit }}"
+    password: "{{ graylog_api_auth_pass if graylog_api_auth_pass | length > 0 else omit }}"
+    force_basic_auth: "{{ (graylog_api_auth_user | length > 0) | bool }}"
+    validate_certs: "{{ graylog_validate_certs }}"
+    body_format: json
+    body: "{{ graylog_search_json }}"
+    return_content: true
+  when: graylog_existing_search is defined and graylog_existing_search.id is defined
+  register: graylog_search_put
+  failed_when: false
+  no_log: true
