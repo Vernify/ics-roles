@@ -1,3 +1,16 @@
+```jinja
+## Fluent Bit audit forwarding: DISABLED
+##
+## The Fluent Bit audit forwarding template has been intentionally disabled in
+## this collection. The original content is archived at
+## `roles/auditd/templates/disabled_fluentbit_audit.conf.j2`.
+##
+## If you need Fluent Bit for audit forwarding, restore the archived file to
+## `fluentbit_audit.conf.j2` and enable Fluent Bit via the fluentbit role
+## (`roles/fluentbit/defaults/main.yml -> fluentbit_enabled: true`).
+
+## (placeholder file — no active config)
+```
 ## Fluent Bit config snippet to tail audit.log and forward enriched records to Graylog (GELF)
 [INPUT]
     Name              tail

@@ -1,0 +1,43 @@
+## DISABLED: Fluent Bit config snippet to tail audit.log and forward enriched records to Graylog (GELF)
+## This file has been disabled to avoid automatic Fluent Bit-based audit forwarding.
+## If you need Fluent Bit for audit forwarding, re-enable by restoring fluentbit_audit.conf.j2
+
+## Original content archived here for reference.
+[INPUT]
+    Name              tail
+    Path              /var/log/audit/audit.log
+    Tag               {{ auditd_fluentbit_tag }}
+    DB                /var/log/fluent-bit-audit.db
+    Buffer_Chunk_Size 64KB
+    Buffer_Max_Size   128KB
+    Skip_Long_Lines   On
+    Refresh_Interval  10
+
+# Parser to extract common audit fields using regex with named captures
+[PARSER]
+    Name   audit_kv
+    Format regex
+    Regex  type=(?<type>[^ ]+) msg=audit\((?<timestamp>[^:]+):(?<msgid>\d+)\): (?<rest>.*) pid=(?<pid>\d+).* comm=\"(?<comm>[^\"]*)\" .* exe=\"(?<exe>[^\"]*)\" .* syscall=(?<syscall>[^ ]+) .* success=(?<success>[^ ]+)
+
+# Use the parser filter to parse the raw message into fields
+[FILTER]
+    Name    parser
+    Match   {{ auditd_fluentbit_tag }}
+    Key_Name message
+    Parser  audit_kv
+    Reserve_Data On
+
+# Use Lua to generate a human-readable action description based on parsed fields
+[FILTER]
+    Name    lua
+    Match   {{ auditd_fluentbit_tag }}
+    Script  /etc/fluent-bit/scripts/audit_action.lua
+    Call    parse_action
+
+[OUTPUT]
+    Name  gelf
+    Match {{ auditd_fluentbit_tag }}
+    Host  {{ graylog_server | default('graylog.' ~ (monitoring_domain | default('iotel.io'))) }}
+    Port  {{ graylog_gelf_port | default(12201) }}
+
+## End archived fluentbit audit snippet
