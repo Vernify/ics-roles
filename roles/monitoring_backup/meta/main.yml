@@ -1,0 +1,33 @@
+---
+# Monitoring Backup Role - Meta
+
+galaxy_info:
+  author: ICS Infrastructure Team
+  description: Automated backup solution for Grafana and Graylog monitoring stack
+  license: MIT
+  min_ansible_version: "2.9"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: EL
+      versions:
+        - "7"
+        - "8"
+        - "9"
+    - name: Fedora
+      versions:
+        - "20"
+
+  galaxy_tags:
+    - monitoring
+    - backup
+    - grafana
+    - graylog
+    - opensearch
+    - mongodb
+
+dependencies: []

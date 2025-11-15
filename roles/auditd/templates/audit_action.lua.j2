@@ -1,0 +1,29 @@
+-- Lua script for Fluent Bit to create a human-readable action field from audit records
+function parse_action(tag, timestamp, record)
+  local action = nil
+  -- prefer syscall name when available
+  local syscall = record['syscall'] or ''
+  local comm = record['comm'] or ''
+  local rtype = record['type'] or ''
+
+  if rtype == 'SYSCALL' then
+    -- common mapping for exec-like events
+    if syscall == 'execve' or syscall == '59' then
+      action = 'exec: ' .. (comm == '' and '[unknown]' or comm)
+    else
+      action = 'syscall: ' .. (syscall == '' and '[unknown]' or syscall)
+    end
+  elseif string.find(rtype, 'USER') then
+    action = 'user-event'
+  else
+    action = rtype ~= '' and rtype or 'audit'
+  end
+
+  -- attach pid and a short summary too
+  if record['pid'] then
+    record['_pid'] = record['pid']
+  end
+  record['action_human'] = action
+
+  return 1, timestamp, record
+end

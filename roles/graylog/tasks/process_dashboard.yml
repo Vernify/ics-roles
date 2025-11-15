@@ -1,0 +1,58 @@
+---
+# Process a single dashboard artifact referred by graylog_item
+- name: Read dashboard JSON
+  ansible.builtin.set_fact:
+    graylog_dashboard_json: "{{ lookup('file', graylog_item.path) | from_json }}"
+
+- name: Attempt to create dashboard (POST)
+  ansible.builtin.uri:
+    url: "{{ graylog_api_base }}/api/dashboards"
+    method: POST
+    headers: "{{ graylog_api_headers }}"
+    user: "{{ graylog_api_auth_user if graylog_api_auth_user | length > 0 else omit }}"
+    password: "{{ graylog_api_auth_pass if graylog_api_auth_pass | length > 0 else omit }}"
+    force_basic_auth: "{{ (graylog_api_auth_user | length > 0) | bool }}"
+    validate_certs: "{{ graylog_validate_certs }}"
+    body_format: json
+    body: "{{ graylog_dashboard_json }}"
+    return_content: true
+  register: graylog_dashboard_post
+  failed_when: false
+  no_log: true
+
+- name: If dashboard POST failed, fetch existing dashboards
+  ansible.builtin.uri:
+    url: "{{ graylog_api_base }}/api/dashboards"
+    method: GET
+    headers: "{{ graylog_api_headers }}"
+    user: "{{ graylog_api_auth_user if graylog_api_auth_user | length > 0 else omit }}"
+    password: "{{ graylog_api_auth_pass if graylog_api_auth_pass | length > 0 else omit }}"
+    force_basic_auth: "{{ (graylog_api_auth_user | length > 0) | bool }}"
+    validate_certs: "{{ graylog_validate_certs }}"
+    return_content: true
+  register: graylog_existing_dashboards
+  when: graylog_dashboard_post.status not in [200,201]
+  no_log: true
+
+- name: Find existing dashboard by title
+  ansible.builtin.set_fact:
+    graylog_existing_dashboard: >-
+      {{ (graylog_existing_dashboards.json.dashboards | default([])) | selectattr('title', 'equalto', graylog_dashboard_json.title) | list | first | default({}) }}
+  when: graylog_existing_dashboards is defined
+
+- name: Update dashboard when existing (PUT)
+  ansible.builtin.uri:
+    url: "{{ graylog_api_base }}/api/dashboards/{{ graylog_existing_dashboard.id }}"
+    method: PUT
+    headers: "{{ graylog_api_headers }}"
+    user: "{{ graylog_api_auth_user if graylog_api_auth_user | length > 0 else omit }}"
+    password: "{{ graylog_api_auth_pass if graylog_api_auth_pass | length > 0 else omit }}"
+    force_basic_auth: "{{ (graylog_api_auth_user | length > 0) | bool }}"
+    validate_certs: "{{ graylog_validate_certs }}"
+    body_format: json
+    body: "{{ graylog_dashboard_json }}"
+    return_content: true
+  when: graylog_existing_dashboard is defined and graylog_existing_dashboard.id is defined
+  register: graylog_dashboard_put
+  failed_when: false
+  no_log: true
