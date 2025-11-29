@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.1.0] - 2025-11-09
 
+## [3.1.1] - 2025-11-29
+
+### Changed
+- Release bump and metadata updates (version 3.1.1).
+- Only pass groups if defined.
+
+
 ### Added
 - **monitoring_backup** role - Automated backup and restoration for Grafana and Graylog
   - Grafana: API-based dashboard export, provisioning files, optional database backup
