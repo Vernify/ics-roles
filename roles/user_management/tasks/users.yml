@@ -6,7 +6,11 @@
     name: "{{ user_management_user.name }}"
     uid: "{{ user_management_user.uid | default(omit) }}"
     group: "{{ user_management_user.group | default(user_management_user.name if user_management_create_user_groups else omit) }}"
-    groups: "{{ user_management_user.groups | default([]) | join(',') }}"
+    groups: >-
+      {{
+        (user_management_user.groups | default([]) | length > 0)
+        | ternary((user_management_user.groups | join(',')), omit)
+      }}
     shell: "{{ user_management_user.shell | default(user_management_default_shell) }}"
     home: "{{ user_management_user.home | default('/home/' + user_management_user.name) }}"
     create_home: "{{ user_management_user.create_home | default(user_management_create_home_dirs) }}"
