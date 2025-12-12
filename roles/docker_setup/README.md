@@ -1,4 +1,4 @@
-# docker_setup role
+# docker_runtime role
 
 Installs and configures Docker Engine.
 
@@ -8,14 +8,14 @@ Installs and configures Docker Engine.
 - Ensures the Docker service is enabled and started.
 - Optionally adds users to the `docker` group.
 
-Variables (prefix docker_setup_):
-- docker_setup_install: bool (default: true)
-- docker_setup_repo_channel: stable|nightly|test (default: stable)
-- docker_setup_data_root: string, e.g. `/opt/docker_volumes/docker-data` (default: "")
-- docker_setup_daemon_extra: dict to merge into daemon.json (default: `{}`)
-- docker_setup_packages: list of Docker packages (default includes engine, CLI, containerd, buildx, compose plugin)
-- docker_setup_users: list of users to add to docker group (default: [])
-- docker_setup_service_name: service name (default: docker)
+Variables (prefix docker_runtime_):
+- docker_runtime_install: bool (default: true)
+- docker_runtime_repo_channel: stable|nightly|test (default: stable)
+- docker_runtime_data_root: string, e.g. `/opt/docker_volumes/docker-data` (default: "")
+- docker_runtime_daemon_extra: dict to merge into daemon.json (default: `{}`)
+- docker_runtime_packages: list of Docker packages (default includes engine, CLI, containerd, buildx, compose plugin)
+- docker_runtime_users: list of users to add to docker group (default: [])
+- docker_runtime_service_name: service name (default: docker)
 
 Example usage:
 
@@ -24,4 +24,4 @@ Example usage:
   roles:
     - role: ics.common.docker_setup
       vars:
-        docker_setup_data_root: /opt/docker_volumes/docker-data
+        docker_runtime_data_root: /opt/docker_volumes/docker-data

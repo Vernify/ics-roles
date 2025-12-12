@@ -1,23 +1,23 @@
 ---
-# Defaults for docker_setup role
-# Prefix all variables with docker_setup_ to satisfy ansible-lint and avoid collisions
+# Defaults for docker_runtime role
+# Prefix all variables with docker_runtime_ to satisfy ansible-lint and avoid collisions
 
 # Whether to install Docker engine and dependencies
-docker_setup_install: true
+docker_runtime_install: true
 
 # Docker APT repo channel (stable, nightly, test)
-docker_setup_repo_channel: stable
+docker_runtime_repo_channel: stable
 
 # Optional data-root path for Docker (e.g., /opt/docker_volumes/docker-data)
 # If empty, daemon.json will not be managed by this role
-docker_setup_data_root: "/opt/docker_volumes/docker-data"
+docker_runtime_data_root: "/opt/docker_volumes/docker-data"
 
 # Additional daemon config to merge into daemon.json (dict)
-docker_setup_daemon_extra: {}
+docker_runtime_daemon_extra: {}
 
 # Packages to install for Docker Engine on Debian/Ubuntu
 # Adjusted at runtime per OS family if needed
-docker_setup_packages:
+docker_runtime_packages:
   - docker-ce
   - docker-ce-cli
   - containerd.io
@@ -25,7 +25,7 @@ docker_setup_packages:
   - docker-compose-plugin
 
 # Users to add to the docker group (empty to skip)
-docker_setup_users: []
+docker_runtime_users: []
 
 # Service name can differ on some distros
-docker_setup_service_name: docker
+docker_runtime_service_name: docker

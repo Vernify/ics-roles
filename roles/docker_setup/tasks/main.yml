@@ -11,7 +11,7 @@
     state: present
     update_cache: true
   when: ansible_os_family == 'Debian'
-  tags: [docker_setup]
+  tags: [docker_runtime]
 
 - name: Create directory for Docker GPG key (Debian/Ubuntu)
   ansible.builtin.file:
@@ -19,7 +19,7 @@
     state: directory
     mode: '0755'
   when: ansible_os_family == 'Debian'
-  tags: [docker_setup]
+  tags: [docker_runtime]
 
 - name: Add Docker's official GPG key (Debian/Ubuntu)
   ansible.builtin.get_url:
@@ -27,63 +27,63 @@
     dest: /etc/apt/keyrings/docker.asc
     mode: '0644'
   when: ansible_os_family == 'Debian'
-  tags: [docker_setup]
+  tags: [docker_runtime]
 
 - name: Add Docker repository (Debian/Ubuntu)
   ansible.builtin.apt_repository:
-    repo: "deb [arch={{ 'x86_64' if ansible_architecture == 'x86_64' else ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} {{ docker_setup_repo_channel }}"
+    repo: "deb [arch={{ 'x86_64' if ansible_architecture == 'x86_64' else ansible_architecture }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} {{ docker_runtime_repo_channel }}"
     state: present
     filename: docker
   when: ansible_os_family == 'Debian'
-  tags: [docker_setup]
+  tags: [docker_runtime]
 
 - name: Update apt cache after adding Docker repository (Debian/Ubuntu)
   ansible.builtin.apt:
     update_cache: true
   when: ansible_os_family == 'Debian'
-  tags: [docker_setup]
+  tags: [docker_runtime]
 
 - name: Install Docker packages (Debian/Ubuntu)
   ansible.builtin.apt:
-    name: "{{ docker_setup_packages }}"
+    name: "{{ docker_runtime_packages }}"
     state: present
-  when: ansible_os_family == 'Debian' and docker_setup_install | bool
-  tags: [docker_setup]
+  when: ansible_os_family == 'Debian' and docker_runtime_install | bool
+  tags: [docker_runtime]
 
 - name: Ensure docker service is running
   ansible.builtin.service:
-    name: "{{ docker_setup_service_name }}"
+    name: "{{ docker_runtime_service_name }}"
     state: started
     enabled: true
-  when: docker_setup_install | bool
-  tags: [docker_setup]
+  when: docker_runtime_install | bool
+  tags: [docker_runtime]
 
 - name: Create Docker data directory when data-root is set
   ansible.builtin.file:
-    path: "{{ docker_setup_data_root }}"
+    path: "{{ docker_runtime_data_root }}"
     state: directory
     mode: '0711'
-  when: docker_setup_data_root | length > 0
-  tags: [docker_setup]
+  when: docker_runtime_data_root | length > 0
+  tags: [docker_runtime]
 
 - name: Render Docker daemon.json (data-root and extra)
   ansible.builtin.template:
     src: daemon.json.j2
     dest: /etc/docker/daemon.json
     mode: '0644'
-  notify: docker_setup_restart
-  when: docker_setup_data_root | length > 0 or (docker_setup_daemon_extra | length > 0)
-  tags: [docker_setup]
+  notify: docker_runtime_restart
+  when: docker_runtime_data_root | length > 0 or (docker_runtime_daemon_extra | length > 0)
+  tags: [docker_runtime]
 
 - name: Add users to docker group
   ansible.builtin.user:
-    name: "{{ docker_setup_user }}"
+    name: "{{ docker_runtime_user }}"
     groups: docker
     append: true
-  loop: "{{ docker_setup_users }}"
+  loop: "{{ docker_runtime_users }}"
   loop_control:
-    loop_var: docker_setup_user
-  when: docker_setup_users | length > 0
-  tags: [docker_setup]
+    loop_var: docker_runtime_user
+  when: docker_runtime_users | length > 0
+  tags: [docker_runtime]
 
 # TODO: Add RedHat family support if/when needed.

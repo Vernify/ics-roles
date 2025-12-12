@@ -3,6 +3,6 @@
 
 - name: Restart Docker
   ansible.builtin.service:
-    name: "{{ docker_setup_service_name }}"
+    name: "{{ docker_runtime_service_name }}"
     state: restarted
-  listen: "docker_setup_restart"
+  listen: "docker_runtime_restart"
