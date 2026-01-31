@@ -31,7 +31,10 @@
     validate_certs: "{{ graylog_validate_certs }}"
     return_content: true
   register: graylog_existing_pipelines
-  when: graylog_pipeline_post.status not in [200,201]
+  when:
+    - graylog_pipeline_post is defined
+    - graylog_pipeline_post.status is defined
+    - graylog_pipeline_post.status not in [200,201]
   failed_when: false
   no_log: true
 

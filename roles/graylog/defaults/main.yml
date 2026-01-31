@@ -108,13 +108,19 @@ graylog_api_password: "{{ graylog_root_password_plain }}"
 graylog_api_token: ""  # Optional personal access token; if set, supersedes user/password auth
 graylog_validate_certs: false
 
-# Artifact locations relative to repo root
-graylog_artifacts:
-  pipelines: "collector/graylog/pipelines"
-  pipeline_definitions: "collector/graylog/pipelines_definitions"
+# Graylog artifact management: pipelines and pipeline definitions
+# Artifacts are organized by purpose/type in subdirectories for selective deployment.
+# Each organization can enable only the artifact sets they need.
+
+# Base path for all artifacts (relative to collection root)
+graylog_artifact_base_path: "collector/graylog"
+
+# List of artifact sets to deploy (each set has its own subdirectory)
+# Available sets:
+#   - snoopy: Shell command logging and session tracking
+#   - geo_lookup: GeoIP enrichment (future)
+# Example: graylog_enabled_artifact_sets: ['snoopy', 'geo_lookup']
+graylog_enabled_artifact_sets: []
 
 # Default stream ID to connect pipelines to (000000000000000000000001 = Default Stream)
 graylog_default_stream_id: "000000000000000000000001"
-
-# Enable the automatic upload/import of Graylog artifacts (off by default)
-graylog_upload_enabled: false

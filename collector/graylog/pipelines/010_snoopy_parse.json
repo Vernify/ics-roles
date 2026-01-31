@@ -1,5 +1,0 @@
-{
-  "title": "snoopy_parse",
-  "description": "Parse snoopy messages to extract 'user' (from login:username) and 'command' (from after the bracket).",
-  "source": "rule \"snoopy_parse\"\nwhen\n  has_field(\"app\") && to_string($message.app) == \"snoopy\"\nthen\n  let user_match = regex(\"login:([^\\\\s]+)\", to_string($message.message));\n  set_field(\"user\", user_match[\"0\"]);\n  let cmd_match = regex(\"\\\\]:\\\\s*(.+)$\", to_string($message.message));\n  set_field(\"command\", cmd_match[\"0\"]);\nend\n"
-}

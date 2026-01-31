@@ -1,14 +1,12 @@
 ---
 # Clean idempotent import for Graylog artifacts (pipelines and pipeline definitions)
 # Uses token auth if graylog_api_token provided; falls back to basic auth.
+# Imports artifacts from the specified artifact set subdirectory.
 
-- name: Ensure required artifact variables are defined
-  ansible.builtin.assert:
-    that:
-      - graylog_artifacts is defined
-      - graylog_artifacts.pipelines is defined
-      - graylog_artifacts.pipeline_definitions is defined
-    fail_msg: "graylog_artifacts.pipelines and graylog_artifacts.pipeline_definitions must be defined"
+- name: Set artifact paths for current set
+  ansible.builtin.set_fact:
+    graylog_current_pipelines_path: "{{ graylog_artifact_base_path }}/pipelines/{{ graylog_artifact_set }}"
+    graylog_current_definitions_path: "{{ graylog_artifact_base_path }}/pipelines_definitions/{{ graylog_artifact_set }}"
 
 - name: Set Graylog API base and headers
   ansible.builtin.set_fact:
@@ -23,9 +21,9 @@
 ############################
 # Pipelines
 ############################
-- name: Find pipeline files
+- name: Find pipeline files for {{ graylog_artifact_set }}
   ansible.builtin.find:
-    paths: "{{ graylog_artifacts.pipelines }}"
+    paths: "{{ graylog_current_pipelines_path }}"
     patterns: '*.json'
     file_type: file
   register: graylog_pipeline_files
@@ -45,9 +43,9 @@
 ############################
 # Pipeline Definitions (and stream connections)
 ############################
-- name: Find pipeline definition files
+- name: Find pipeline definition files for {{ graylog_artifact_set }}
   ansible.builtin.find:
-    paths: "{{ graylog_artifacts.pipeline_definitions }}"
+    paths: "{{ graylog_current_definitions_path }}"
     patterns: '*.json'
     file_type: file
   register: graylog_pipeline_def_files

@@ -272,7 +272,10 @@
 
 - name: "Import Graylog artifacts (pipelines and pipeline definitions)"
   ansible.builtin.include_tasks: import_gray_artifacts.yml
-  when: graylog_upload_enabled | bool
+  loop: "{{ graylog_enabled_artifact_sets }}"
+  loop_control:
+    loop_var: graylog_artifact_set
+  when: graylog_enabled_artifact_sets | length > 0
   tags: [monitoring, graylog, graylog_artifacts]
 
 - name: Create Graylog inputs

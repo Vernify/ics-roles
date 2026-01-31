@@ -26,6 +26,7 @@
     size: 100%FREE
     state: present
   when: monitoring_common_prepare_docker_disk | bool and ansible_os_family == 'Debian'
+  check_mode: false
   tags: [monitoring, monitoring_common, storage]
 
 - name: Create filesystem on Docker logical volume (idempotent)
