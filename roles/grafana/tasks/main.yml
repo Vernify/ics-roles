@@ -5,10 +5,7 @@
   ansible.builtin.file:
     path: "{{ grafana_item }}"
     state: directory
-    owner: root
-    group: root
     mode: '0755'
-    recurse: true
   loop:
     - "{{ grafana_volumes_root }}/data"
     - "{{ grafana_volumes_root }}/provisioning"

@@ -5,10 +5,7 @@
   ansible.builtin.file:
     path: "{{ graphite_item }}"
     state: directory
-    owner: root
-    group: root
     mode: '0755'
-    recurse: true
   loop:
     - "{{ graphite_volumes_root }}/storage"
     - "{{ graphite_volumes_root }}/config"

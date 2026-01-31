@@ -5,10 +5,7 @@
   ansible.builtin.file:
     path: "{{ monitoring_proxy_item }}"
     state: directory
-    owner: root
-    group: root
     mode: '0755'
-    recurse: true
   loop:
     - "{{ monitoring_proxy_volumes_root }}/conf"
     - "{{ monitoring_proxy_volumes_root }}/conf/conf.d"
