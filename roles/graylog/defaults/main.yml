@@ -45,17 +45,16 @@ graylog_group_id: 1100
 
 # HTTP settings
 graylog_http_bind: "0.0.0.0:9000"
-graylog_domain: "{{ ansible_domain | default('example.com') }}"
 # Publish/external URIs should reflect the public URL users access (fixes API-browser/CSP issues)
-graylog_http_publish_uri: "http://graylog.{{ graylog_domain }}/"
+graylog_http_publish_uri: "http://graylog.{{ monitoring_domain }}/"
 graylog_http_external_uri: "{{ graylog_http_publish_uri }}"
 graylog_http_csp_policy: >-
   default-src 'self';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline' http://graylog.{{ graylog_domain }};
-  style-src 'self' 'unsafe-inline' http://graylog.{{ graylog_domain }};
-  img-src 'self' data: http://graylog.{{ graylog_domain }};
-  font-src 'self' data: http://graylog.{{ graylog_domain }};
-  connect-src 'self' http://graylog.{{ graylog_domain }} ws://graylog.{{ graylog_domain }};
+  script-src 'self' 'unsafe-eval' 'unsafe-inline' http://graylog.{{ monitoring_domain }};
+  style-src 'self' 'unsafe-inline' http://graylog.{{ monitoring_domain }};
+  img-src 'self' data: http://graylog.{{ monitoring_domain }};
+  font-src 'self' data: http://graylog.{{ monitoring_domain }};
+  connect-src 'self' http://graylog.{{ monitoring_domain }} ws://graylog.{{ monitoring_domain }};
   frame-ancestors 'self';
   object-src 'none';
   base-uri 'self';
@@ -101,7 +100,7 @@ graylog_inputs:
     global: true
 
 # Graylog API upload settings (for importing pipelines)
-graylog_api_url: "http://graylog.{{ graylog_domain }}"
+graylog_api_url: "http://graylog.{{ monitoring_domain }}"
 # Reuse root credentials to avoid duplication; override if different API user is required.
 graylog_api_user: "{{ (lookup('env','GRAYLOG_API_USER') | default('admin')) }}"
 graylog_api_password: "{{ graylog_root_password_plain }}"

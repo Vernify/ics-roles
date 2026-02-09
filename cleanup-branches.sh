@@ -21,3 +21,4 @@ done
 echo "For remote branches, check:"
 echo "git branch -r | grep -v main"
 echo "Then delete with: git push origin --delete <branch-name>"
+echo "Then delete with: git push origin --delete <branch-name>"

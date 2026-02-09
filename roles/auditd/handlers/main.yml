@@ -23,3 +23,14 @@
   ansible.builtin.service:
     name: rsyslog
     state: restarted
+
+- name: Restart fluent-bit
+  ansible.builtin.shell: |
+    if command -v fluent-bit >/dev/null 2>&1; then
+      systemctl restart fluent-bit || true
+    else
+      echo "fluent-bit not installed; skipping restart"
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
