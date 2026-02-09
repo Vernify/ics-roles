@@ -43,7 +43,6 @@
 - name: User management audit (always run for monitoring)
   ansible.builtin.import_tasks: user_audit.yml
   tags:
-    - always
     - user_management_audit
 
 - name: Cleanup removed users (if enabled)

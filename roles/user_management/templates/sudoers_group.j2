@@ -1,6 +1,5 @@
 # Sudoers configuration for group: {{ user_management_group.name }}
 # Managed by Ansible - do not edit manually
-# Generated on: {{ ansible_date_time.iso8601 }}
 
 # Group: {{ user_management_group.name }}
 {% if user_management_group.sudo_rules is defined and user_management_group.sudo_rules | length > 0 %}
