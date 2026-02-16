@@ -90,4 +90,4 @@
     - user_management_users | length > 0
     - user_management_user.state | default('present') == 'present'
     - user_management_user.password is not defined
-    - not (user_management_user.key_only | default(false))
+    - user_management_user.key_only | default(false)
