@@ -8,8 +8,11 @@
     group: "{{ user_management_user.group | default(user_management_user.name if user_management_create_user_groups else omit) }}"
     groups: >-
       {{
-        (user_management_user.groups | default([]) | length > 0)
-        | ternary((user_management_user.groups | join(',')), omit)
+        ((user_management_user.groups | default([user_management_user.group] if user_management_user.group is defined else [])) | length > 0)
+        | ternary(
+          ((user_management_user.groups | default([user_management_user.group] if user_management_user.group is defined else [])) | join(',')),
+          omit
+        )
       }}
     shell: "{{ user_management_user.shell | default(user_management_default_shell) }}"
     home: "{{ user_management_user.home | default('/home/' + user_management_user.name) }}"
